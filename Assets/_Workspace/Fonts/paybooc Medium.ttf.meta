@@ -1,0 +1,24 @@
+fileFormatVersion: 2
+guid: 081a3f0001641484f867a6be7142b992
+TrueTypeFontImporter:
+  externalObjects: {}
+  serializedVersion: 4
+  fontSize: 16
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontName: paybooc
+  fontNames:
+  - paybooc
+  fallbackFontReferences:
+  - {fileID: 12800000, guid: 15aaf15a34348a34582d475602189381, type: 3}
+  - {fileID: 12800000, guid: d199718f691cfa646bdcc5ca851b8226, type: 3}
+  customCharacters: 
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  useLegacyBoundsCalculation: 0
+  shouldRoundAdvanceValue: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
