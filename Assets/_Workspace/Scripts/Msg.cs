@@ -1,8 +1,5 @@
 ﻿using BackEnd.Tcp;
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
 public class Msg
 {
@@ -26,10 +23,12 @@ public class Msg
 public class GameStartMsg : Msg
 {
 	public SessionId sessionId;
+	public ClassType cType;
 	public GameStartMsg() : base()
 	{
 		type = MsgType.gameStart;
 		sessionId = BackendManager.instance.GetMySessionId();
+		cType = UserInfo.instance.playingClass;
 	}
 }
 

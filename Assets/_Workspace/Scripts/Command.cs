@@ -114,8 +114,6 @@ public enum ClassType
 
 public class Command
 {
-	public bool isPreview;
-	public ((int x, int y) player, (int x, int y) enemy) previewPos;
 	public Who commander;
 	public CommandId id;
 	public string name;
@@ -128,6 +126,8 @@ public class Command
 
 	public Direction dir;
 
+	public bool isPreview;
+	public ((int x, int y) player, (int x, int y) enemy) previewPos = ((1, 2), (3, 2));
 	public Grid pre_grid;
 	public PlayerInfo pre_Player;
 	public PlayerInfo pre_Enemy;
@@ -214,10 +214,7 @@ public class Command
 
 	public void SetAnimState(AnimState state)
 	{
-		if (!GetCommanderInfo().canAct)
-			return;
-		Animator animator = GetCommanderInfo().animator;
-		animator.SetInteger("state", (int)state);
+		GetCommanderInfo().SetAnimState(state);
 	}
 
 	public ParticleSystem GetEffect()
@@ -306,6 +303,20 @@ public class Command
 		return Resources.Load<Sprite>("CommandIcon/" + id.ToString());
 	}
 
+	public void BattleLog(string message)
+	{
+		if (isPreview)
+			return;
+		InGame.instance.inGameUI.InstantiateBattleLog(this, message);
+	}
+
+	public void ApplyBuff(Who who, Buff buff)
+	{
+		if (isPreview)
+			return;
+
+		InGame.instance.buffSet[who].Add(buff);
+	}
 }
 
 public class EmptyCommand : Command
@@ -319,7 +330,8 @@ public class EmptyCommand : Command
 	public override IEnumerator Execute()
 	{
 		Debug.Log(string.Format("[{0}] 대기", commander.ToString()));
-		SetAnimState(AnimState.idle);
+		if (GetCommanderInfo().lastAnimState.Equals(AnimState.run))
+			SetAnimState(AnimState.idle);
 		yield break;
 	}
 }
@@ -336,7 +348,7 @@ public class MoveCommand : Command
 
 	public override IEnumerator Execute()
 	{
-		Debug.Log(string.Format("[{0}] '{1}' 방향으로 1만큼 이동", commander.ToString(), dir.ToString()));
+		BattleLog(string.Format("{0} 한 칸 이동.", Grid.DirToKorean(dir)));
 
 		PlayerInfo player = GetCommanderInfo();
 		PlayerInfo enemy = GetEnemyInfo();
@@ -353,7 +365,7 @@ public class MoveCommand : Command
 			yield break;
 		}
 
-		Vector3 startPosVec = grid.PosToVec3(curPos);
+		Vector3 startPosVec = tr.position;
 		Vector3 targetPosVec = grid.PosToVec3(targetPos);
 
 		float progress = 0f;
@@ -381,7 +393,7 @@ public class EarthStrikeCommand : Command
 
 	public override IEnumerator Execute()
 	{
-		Debug.Log(string.Format("[{0}] '{1}' 방향으로 " + name, commander.ToString(), dir.ToString()));
+		BattleLog(string.Format("{0} 공격.", Grid.DirToKorean(dir)));
 
 		PlayerInfo player = GetCommanderInfo();
 		PlayerInfo enemy = GetEnemyInfo();
@@ -407,6 +419,8 @@ public class EarthStrikeCommand : Command
 		if (CheckEnemyInArea(attackArea))
 		{
 			enemy.GetDamage(damage);
+			ApplyBuff(enemy.me, new Buff(BuffCategory.stiff, false, 1f));
+			BattleLog(string.Format("{0}의 피해를 주고 경직시킴.", damage.ToString()));
 		}
 		yield return new WaitForSeconds(0.4f);
 		SetAnimState(AnimState.idle);
@@ -424,7 +438,7 @@ public class WhirlStrikeCommand : Command
 
 	public override IEnumerator Execute()
 	{
-		Debug.Log(string.Format("[{0}] " + name, commander.ToString(), dir.ToString()));
+		BattleLog("공격");
 
 		PlayerInfo player = GetCommanderInfo();
 		PlayerInfo enemy = GetEnemyInfo();
@@ -446,6 +460,7 @@ public class WhirlStrikeCommand : Command
 		if (CheckEnemyInArea(attackArea))
 		{
 			enemy.GetDamage(damage);
+			BattleLog(string.Format("공격 적중. {0}의 피해", damage.ToString()));
 		}
 		yield return new WaitForSeconds(0.3f);
 		SetAnimState(AnimState.idle);
@@ -455,14 +470,18 @@ public class WhirlStrikeCommand : Command
 public class GuardCommand : Command
 {
 	public GuardCommand(Direction dir = Direction.right)
-		: base(CommandId.Guard, "방어", 1, 2, 0, DirectionType.none, ClassType.common)
+		: base(CommandId.Guard, "방어", 2, 10, 0, DirectionType.none, ClassType.common)
 	{
-
+		description = "2초 동안 받는 피해를 50% 감소시킵니다.";
 	}
 
 	public override IEnumerator Execute()
 	{
-		Debug.Log(string.Format("[{0}] 방어", commander.ToString()));
+		BattleLog("시전");
+		ApplyBuff(commander, new Buff(BuffCategory.takenDamage, true, 2f, -0.5f));
+		SetAnimState(AnimState.guard);
+		yield return new WaitForSeconds(1.9f);
+		SetAnimState(AnimState.idle);
 		yield break;
 	}
 }

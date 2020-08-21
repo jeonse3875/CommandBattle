@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 2842179357396608312}
   - component: {fileID: 2842179357396608313}
   m_Layer: 0
-  m_Name: Cube (13)
+  m_Name: AttackRange_Blue
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

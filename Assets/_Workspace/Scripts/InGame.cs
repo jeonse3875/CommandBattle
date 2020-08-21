@@ -14,7 +14,10 @@ public class InGame : MonoBehaviour
 	public static InGame instance;
 	public InGameUI inGameUI;
 
+	private Dictionary<Who, bool> isGameStart = new Dictionary<Who, bool>();
+
 	public Who me;
+	public Dictionary<Who, ClassType> playingCType = new Dictionary<Who, ClassType>();
 	public Dictionary<Who, SessionId> sessionId = new Dictionary<Who, SessionId>();
 	public Dictionary<Who, bool> isCommandComplete = new Dictionary<Who, bool>();
 	public Dictionary<Who, bool> isBattleEnd = new Dictionary<Who, bool>();
@@ -40,6 +43,8 @@ public class InGame : MonoBehaviour
 
 	public GameObject damageText;
 
+	public Dictionary<Who, BuffSet> buffSet = new Dictionary<Who, BuffSet>();
+
 	#region LifeCycle
 	private void Start()
 	{
@@ -51,6 +56,15 @@ public class InGame : MonoBehaviour
 		AddHandler();
 		inGameUI = GetComponent<InGameUI>();
 		StartCoroutine(GameRoutine());
+	}
+
+	private void LateUpdate()
+	{
+		if (buffSet.ContainsKey(Who.p1) && buffSet.ContainsKey(Who.p2))
+		{
+			buffSet[Who.p1].Update(Time.deltaTime);
+			buffSet[Who.p2].Update(Time.deltaTime);
+		}
 	}
 
 	private void OnDestroy()
@@ -74,8 +88,12 @@ public class InGame : MonoBehaviour
 	#region 게임루틴
 	private IEnumerator GameRoutine()
 	{
+		var waitGameStart = new WaitUntil(IsGameStart);
 		var waitCommandComplete = new WaitUntil(IsCommandComplete);
 		var waitBattleEnd = new WaitUntil(IsBattleEnd);
+
+		BackendManager.instance.SendData(new GameStartMsg());
+		yield return waitGameStart;
 
 		InitializeGame();
 		while (!isGameEnd)
@@ -92,7 +110,6 @@ public class InGame : MonoBehaviour
 
 	private void InitializeGame()
 	{
-		BackendManager.instance.SendData(new GameStartMsg());
 		Debug.Log("게임 초기화");
 		if (BackendManager.instance.isP1)
 			me = Who.p1;
@@ -101,12 +118,16 @@ public class InGame : MonoBehaviour
 		grid = new Grid(5, 5, 5f, new Vector3(-10, 0, -10));
 		playerNickname = BackendManager.instance.GetMyNickname();
 		opponentNickname = BackendManager.instance.GetOpponentNickname();
-		playerInfo[Who.p1] = new PlayerInfo(Who.p1, (0, 2), GameObject.FindGameObjectWithTag("P1").transform);
-		playerInfo[Who.p2] = new PlayerInfo(Who.p2, (4, 2), GameObject.FindGameObjectWithTag("P2").transform);
+		GameObject obj_P1 = Instantiate(Resources.Load<GameObject>("Character/" + playingCType[Who.p1].ToString() + "_Blue"));
+		GameObject obj_P2 = Instantiate(Resources.Load<GameObject>("Character/" + playingCType[Who.p2].ToString() + "_Red"));
+		playerInfo[Who.p1] = new PlayerInfo(Who.p1, (0, 2), obj_P1.transform);
+		playerInfo[Who.p2] = new PlayerInfo(Who.p2, (4, 2), obj_P2.transform);
 		playerInfo[Who.p1].LookEnemy();
 		playerInfo[Who.p2].LookEnemy();
 		particles[Who.p1] = GameObject.Find("Particles_p1").transform;
 		particles[Who.p2] = GameObject.Find("Particles_p2").transform;
+		buffSet[Who.p1] = new BuffSet(Who.p1);
+		buffSet[Who.p2] = new BuffSet(Who.p2);
 
 		inGameUI.InitializeGame();
 	}
@@ -124,8 +145,16 @@ public class InGame : MonoBehaviour
 	private void StartMakingCommand()
 	{
 		Debug.Log("커맨드 만들기 시작");
-		inGameUI.SetInteractability(true);
+		inGameUI.SetActiveCommandUI();
 		inGameUI.StartTimer();
+	}
+
+	private bool IsGameStart()
+	{
+		if (isGameStart.ContainsKey(Who.p1) && isGameStart.ContainsKey(Who.p2))
+			return isGameStart[Who.p1] && isGameStart[Who.p2];
+		else
+			return false;
 	}
 
 	private bool IsCommandComplete()
@@ -137,7 +166,7 @@ public class InGame : MonoBehaviour
 	{
 		inGameUI.StopTimer();
 		Debug.Log("배틀 시작");
-		inGameUI.SetInteractability(false);
+		inGameUI.SetActiveBattleTapUI();
 		StartCoroutine(BattleRoutine());
 	}
 
@@ -146,13 +175,24 @@ public class InGame : MonoBehaviour
 		for (int currentTime = 0; currentTime < 10; currentTime++)
 		{
 			Debug.Log(string.Format("[{0}/10]", (currentTime + 1).ToString()));
-			if (playerInfo[Who.p1].canAct)
+			bool canActP1 = playerInfo[Who.p1].canAct;
+			bool canActP2 = playerInfo[Who.p2].canAct;
+
+			if (canActP1 && !playerInfo[Who.p1].isDead)
 				commandRoutine[Who.p1] = StartCoroutine(commandList[Who.p1][currentTime].Execute());
-			if (playerInfo[Who.p2].canAct)
+			else
+				playerInfo[Who.p1].canAct = true;
+			if (canActP2 && !playerInfo[Who.p2].isDead)
 				commandRoutine[Who.p2] = StartCoroutine(commandList[Who.p2][currentTime].Execute());
+			else
+				playerInfo[Who.p2].canAct = true;
+
 			yield return new WaitForSeconds(1f);
 		}
-
+		playerInfo[Who.p1].SetAnimState(AnimState.idle);
+		playerInfo[Who.p2].SetAnimState(AnimState.idle);
+		buffSet[Who.p1].Clear();
+		buffSet[Who.p2].Clear();
 		BackendManager.instance.SendData(new BattleEndMsg());
 	}
 
@@ -205,6 +245,8 @@ public class InGame : MonoBehaviour
 			case Msg.MsgType.gameStart:
 				GameStartMsg gsm = JsonUtility.FromJson<GameStartMsg>(json);
 				sessionId[gsm.sender] = gsm.sessionId;
+				playingCType[gsm.sender] = gsm.cType;
+				isGameStart[gsm.sender] = true;
 				break;
 			case Msg.MsgType.commandComplete:
 				CommandCompleteMsg ccm = JsonUtility.FromJson<CommandCompleteMsg>(json);
@@ -221,13 +263,15 @@ public class InGame : MonoBehaviour
 	public void StopCommand(Who who)
 	{
 		if (commandRoutine[who] != null)
+		{
 			StopCoroutine(commandRoutine[who]);
+		}
 	}
 
 	public void InstantiateAttackRange(Who commander, (int x, int y) pos, float destroyTime)
 	{
 		Vector3 vec3 = grid.PosToVec3(pos) + Vector3.up * 0.1f;
-		if(commander.Equals(Who.p1))
+		if (commander.Equals(Who.p1))
 		{
 			var obj = Instantiate(attackRangeBlue, vec3, Quaternion.identity);
 			Destroy(obj, destroyTime);
@@ -244,5 +288,15 @@ public class InGame : MonoBehaviour
 		var obj = Instantiate(damageText);
 		obj.transform.position = vec3;
 		obj.GetComponent<DamageTMP>().message = message;
+	}
+
+	public GameObject InstantiateBuffEffect(string name)
+	{
+		return Instantiate(Resources.Load<GameObject>("Buff/" + name));
+	}
+
+	public void DestroyObj(GameObject obj)
+	{
+		Destroy(obj);
 	}
 }

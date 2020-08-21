@@ -90,6 +90,42 @@ public class Grid
 	{
 		return pos.x < sizeX && pos.x >= 0 && pos.y < sizeY && pos.y >= 0;
 	}
+
+	public static string DirToKorean(Direction dir)
+	{
+		string str = "";
+		switch (dir)
+		{
+			case Direction.up:
+				str = "위로";
+				break;
+			case Direction.rightUp:
+				str = "오른쪽 위로";
+				break;
+			case Direction.right:
+				str = "오른쪽으로";
+				break;
+			case Direction.rightDown:
+				str = "오른쪽 아래로";
+				break;
+			case Direction.down:
+				str = "아래로";
+				break;
+			case Direction.leftDown:
+				str = "왼쪽 아래로";
+				break;
+			case Direction.left:
+				str = "왼쪽으로";
+				break;
+			case Direction.leftUp:
+				str = "왼쪽 위로";
+				break;
+			default:
+				break;
+		}
+
+		return str;
+	}
 }
 
 public enum DirectionType

@@ -94,10 +94,110 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6438948946814682371, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439024050103872517, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439030920959889231, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439076089349556747, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439100118105177989, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439129941600580611, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439212554951606995, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439252514564187021, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439388926831151433, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439389165465250649, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439432929390447751, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439455400205855123, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6439575086092674955, guid: a7868d54e763a0d439b58a2f71784f3c,
         type: 3}
       propertyPath: m_Name
       value: EarthStrike
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439575086092674955, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439633416346868813, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439694163197904067, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439707010881223009, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439725586891870347, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439776173907111313, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439811610271196083, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6439859306626868069, guid: a7868d54e763a0d439b58a2f71784f3c,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6600036999726994877, guid: a7868d54e763a0d439b58a2f71784f3c,
         type: 3}
@@ -228,6 +328,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: WhirlStrike
+      objectReference: {fileID: 0}
+    - target: {fileID: 8290461355536621747, guid: 337bbd02e059a514e845464a74d7e044,
+        type: 3}
+      propertyPath: m_Layer
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8294338349278315293, guid: 337bbd02e059a514e845464a74d7e044,
         type: 3}

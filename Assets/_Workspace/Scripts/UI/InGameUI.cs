@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -8,6 +7,8 @@ public class InGameUI : MonoBehaviour
 	public CommandSet playerCommandSet;
 
 	public GameObject group_DirUI;
+
+	public GameObject group_WaitOpponent;
 
 	public GameObject group_BattleTap;
 
@@ -35,6 +36,11 @@ public class InGameUI : MonoBehaviour
 	public Text text_HP_P2;
 
 	public GameObject youArrow;
+
+	public GameObject logBlock;
+	public Transform logParentTr_P1;
+	public Transform logParentTr_P2;
+	private List<GameObject> logList = new List<GameObject>();
 
 	private void Update()
 	{
@@ -76,6 +82,7 @@ public class InGameUI : MonoBehaviour
 		InitializeCommandButton();
 		UpdateCommandButton();
 		isCompleted = false;
+		ClearBattleLog();
 	}
 
 	public void Button_AddCommand(int num)
@@ -105,7 +112,7 @@ public class InGameUI : MonoBehaviour
 		CommandCompleteMsg ccm = playerCommandSet.ToCCM();
 		BackendManager.instance.SendData(ccm);
 
-		SetInteractability(false);
+		SetActiveWaitingUI();
 	}
 
 	public void Button_CancelDirUI()
@@ -227,9 +234,22 @@ public class InGameUI : MonoBehaviour
 		}
 	}
 
-	public void SetInteractability(bool status)
+	public void SetActiveCommandUI()
 	{
-		group_BattleTap.SetActive(!status);
+		group_WaitOpponent.SetActive(false);
+		group_BattleTap.SetActive(false);
+	}
+
+	public void SetActiveWaitingUI()
+	{
+		group_WaitOpponent.SetActive(true);
+		group_BattleTap.SetActive(false);
+	}
+
+	public void SetActiveBattleTapUI()
+	{
+		group_WaitOpponent.SetActive(false);
+		group_BattleTap.SetActive(true);
 	}
 
 	public void StartTimer()
@@ -243,5 +263,25 @@ public class InGameUI : MonoBehaviour
 	{
 		isTimerActive = false;
 		text_Timer.gameObject.SetActive(false);
+	}
+
+	public void InstantiateBattleLog(Command command, string message)
+	{
+		GameObject obj; 
+		if (command.commander.Equals(Who.p1))
+			obj = Instantiate(logBlock, logParentTr_P1);
+		else
+			obj = Instantiate(logBlock, logParentTr_P2);
+
+		obj.transform.SetAsFirstSibling();
+		logList.Add(obj);
+		obj.GetComponent<LogBlock>().SetBlock(command, message);
+	}
+
+	public void ClearBattleLog()
+	{
+		foreach(var log in logList)
+			Destroy(log);
+		logList.Clear();
 	}
 }
