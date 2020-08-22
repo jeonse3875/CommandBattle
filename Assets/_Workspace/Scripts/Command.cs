@@ -104,7 +104,7 @@ public class CommandSet
 
 public enum CommandId
 {
-	Empty, Move, EarthStrike, WhirlStrike, Guard
+	Empty, Move, EarthStrike, WhirlStrike, Guard, CombatReady
 }
 
 public enum ClassType
@@ -317,6 +317,17 @@ public class Command
 
 		InGame.instance.buffSet[who].Add(buff);
 	}
+
+	public void Hit(int damage)
+	{
+		GetCommanderInfo().DealDamage(damage);
+	}
+
+	public void Hit(int damage, Buff deBuff)
+	{
+		GetCommanderInfo().DealDamage(damage);
+		ApplyBuff(Enemy(), deBuff);
+	}
 }
 
 public class EmptyCommand : Command
@@ -418,8 +429,11 @@ public class EarthStrikeCommand : Command
 		yield return new WaitForSeconds(0.25f);
 		if (CheckEnemyInArea(attackArea))
 		{
-			enemy.GetDamage(damage);
-			ApplyBuff(enemy.me, new Buff(BuffCategory.stiff, false, 1f));
+			Buff stiff = new Buff(BuffCategory.stiff, false);
+			stiff.SetCount(CountType.instant);
+
+			Hit(damage, stiff);
+			
 			BattleLog(string.Format("{0}의 피해를 주고 경직시킴.", damage.ToString()));
 		}
 		yield return new WaitForSeconds(0.4f);
@@ -459,7 +473,7 @@ public class WhirlStrikeCommand : Command
 		yield return new WaitForSeconds(0.15f);
 		if (CheckEnemyInArea(attackArea))
 		{
-			enemy.GetDamage(damage);
+			Hit(damage);
 			BattleLog(string.Format("공격 적중. {0}의 피해", damage.ToString()));
 		}
 		yield return new WaitForSeconds(0.3f);
@@ -478,10 +492,47 @@ public class GuardCommand : Command
 	public override IEnumerator Execute()
 	{
 		BattleLog("시전");
-		ApplyBuff(commander, new Buff(BuffCategory.takenDamage, true, 2f, -0.5f));
+
+		Buff damageReduce = new Buff(BuffCategory.takeDamage, true, -0.5f);
+		damageReduce.SetDuration(2f);
+		ApplyBuff(commander, damageReduce);
+
 		SetAnimState(AnimState.guard);
 		yield return new WaitForSeconds(1.9f);
 		SetAnimState(AnimState.idle);
+		yield break;
+	}
+}
+
+public class CombatReadyCommand : Command
+{
+	public CombatReadyCommand(Direction dir = Direction.right)
+		: base(CommandId.CombatReady, "전투준비", 2, 1, 0, DirectionType.none, ClassType.knight)
+	{
+		description = "받는 피해를 한 번만 30% 감소시킵니다. 주는 피해를 한 번만 30% 증가시킵니다.";
+	}
+
+	public override IEnumerator Execute()
+	{
+		BattleLog("시전");
+
+		Buff takeDamageReduce = new Buff(BuffCategory.takeDamage, true, -0.3f);
+		takeDamageReduce.SetCount(CountType.getHit, 1);
+
+		Buff dealDamageIncrease = new Buff(BuffCategory.dealDamage, true, +0.3f);
+		dealDamageIncrease.SetCount(CountType.hit, 1);
+		var effect = GetEffect();
+		effect.transform.position = GetCommanderInfo().tr.position;
+
+		// 수치 조정
+		SetAnimState(AnimState.combatReady);
+		effect.Play();
+		yield return new WaitForSeconds(0.8f);
+		ApplyBuff(commander, takeDamageReduce);
+		ApplyBuff(commander, dealDamageIncrease);
+		yield return new WaitForSeconds(0.2f);
+		SetAnimState(AnimState.idle);
+
 		yield break;
 	}
 }

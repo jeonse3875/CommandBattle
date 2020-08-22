@@ -283,16 +283,23 @@ public class InGame : MonoBehaviour
 		}
 	}
 
-	public void InstantiateDamageTMP(Vector3 vec3, string message)
+	public void InstantiateDamageTMP(Transform tr, string message, int mode)
 	{
 		var obj = Instantiate(damageText);
-		obj.transform.position = vec3;
-		obj.GetComponent<DamageTMP>().message = message;
+		obj.transform.position = tr.position + Vector3.up * 3.75f;
+		var tmp = obj.GetComponent<DamageTMP>();
+		tmp.message = message;
+		tmp.SetEffect(mode);
 	}
 
-	public GameObject InstantiateBuffEffect(string name)
+	public GameObject InstantiateBuffEffect(Buff buff)
 	{
-		return Instantiate(Resources.Load<GameObject>("Buff/" + name));
+		string name = string.Format("Buff/{0}_{1}_{2}", buff.category.ToString(), buff.isGood.ToString(), buff.buffType.ToString());
+		var obj = Resources.Load<GameObject>(name);
+		if (obj != null)
+			return Instantiate(obj);
+		else
+			return null;
 	}
 
 	public void DestroyObj(GameObject obj)

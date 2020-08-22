@@ -12,8 +12,8 @@ public class PlayerInfo
 	public int hp;
 	public ClassType classType;
 
-	public float takenDamageMultiplier = 1f;
-	public float damageDealingMultiplier = 1f;
+	public float takeDamageMultiplier = 1f;
+	public float dealDamageMultiplier = 1f;
 
 	public Transform tr;
 	public Animator animator;
@@ -50,18 +50,19 @@ public class PlayerInfo
 		y = pos.y;
 	}
 
-	public void GetDamage(int damage)
+	public void TakeDamage(int damage, int mode)
 	{
 		if (isPreview)
 		{
-			lobby.InstantiateDamageTMP(tr.position + Vector3.up * 4f, damage.ToString());
+			lobby.InstantiateDamageTMP(tr, damage.ToString(), mode);
 		}
 		else
 		{
-			int takenDamage = Mathf.RoundToInt(damage * takenDamageMultiplier);
+			int takenDamage = Mathf.RoundToInt(damage * takeDamageMultiplier);
 			hp = Mathf.Clamp(hp - takenDamage, 0, maxHP);
+			InGame.instance.buffSet[me].UpdateCount(CountType.getHit, -1);
 			Debug.Log(string.Format("'{0}'이 {1}의 피해를 입음", me.ToString(), takenDamage.ToString()));
-			InGame.instance.InstantiateDamageTMP(tr.position + Vector3.up * 4f, takenDamage.ToString());
+			InGame.instance.InstantiateDamageTMP(tr, takenDamage.ToString(), mode);
 			InGame.instance.inGameUI.UpdateHealth(me);
 
 			if (hp <= 0)
@@ -72,6 +73,25 @@ public class PlayerInfo
 				InGame.instance.StopCommand(me);
 				animator.SetInteger("state", 3);
 			}
+		}
+	}
+
+	public void DealDamage(int damage)
+	{
+		if (isPreview)
+		{
+			lobby.pre_Enemy.TakeDamage(damage, 0);
+		}
+		else
+		{
+			int dealtDamage = Mathf.RoundToInt(damage * dealDamageMultiplier);
+			int mode;
+			if (Mathf.Approximately(dealDamageMultiplier, 1f))
+				mode = 0;
+			else
+				mode = 1;
+			InGame.instance.playerInfo[enemy].TakeDamage(dealtDamage, mode);
+			InGame.instance.buffSet[me].UpdateCount(CountType.hit, -1);
 		}
 	}
 
@@ -101,4 +121,5 @@ public class PlayerInfo
 public enum AnimState
 {
 	idle = 0, run = 1, earthStrike = 2, death = 3, whirlStrike = 4, stiff = 5, guard = 6,
+	combatReady = 7
 }

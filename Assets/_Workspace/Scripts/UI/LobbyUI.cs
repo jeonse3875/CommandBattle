@@ -1,4 +1,5 @@
 ﻿using BackEnd.Tcp;
+using DG.Tweening;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -65,6 +66,7 @@ public class LobbyUI : MonoBehaviour
 	private Coroutine previewExeRoutine;
 	private Command pre_Command;
 	private List<GameObject> pre_ObjList = new List<GameObject>();
+	private List<DamageTMP> pre_TMPList = new List<DamageTMP>();
 
 	private void Start()
 	{
@@ -133,6 +135,12 @@ public class LobbyUI : MonoBehaviour
 			pre_Command.SetAnimState(AnimState.idle);
 			yield return wait2;
 
+			foreach (var tmp in pre_TMPList)
+			{
+				if (tmp != null)
+					tmp.seq.Kill();
+			}
+
 			foreach (var obj in pre_ObjList)
 			{
 				if (obj != null)
@@ -197,7 +205,13 @@ public class LobbyUI : MonoBehaviour
 		particle.Stop();
 		particle.Clear();
 		pre_Command.SetAnimState(AnimState.idle);
-		foreach(var obj in pre_ObjList)
+		foreach (var tmp in pre_TMPList)
+		{
+			if (tmp != null)
+				tmp.seq.Kill();
+		}
+
+		foreach (var obj in pre_ObjList)
 		{
 			if (obj != null)
 				Destroy(obj);
@@ -341,11 +355,15 @@ public class LobbyUI : MonoBehaviour
 		Destroy(obj, destroyTime);
 	}
 
-	public void InstantiateDamageTMP(Vector3 vec3, string message)
+	public void InstantiateDamageTMP(Transform tr, string message, int mode)
 	{
-		var obj = Instantiate(damageText, vec3, Quaternion.identity);
-		obj.GetComponent<DamageTMP>().message = message;
+		var obj = Instantiate(damageText);
+		obj.transform.position = tr.position + Vector3.up * 3.75f;
+		var tmp = obj.GetComponent<DamageTMP>();
+		tmp.message = message;
+		tmp.SetEffect(mode);
 		pre_ObjList.Add(obj);
+		pre_TMPList.Add(tmp);
 	}
 
 	private void Loading(bool state, ForWhat what)

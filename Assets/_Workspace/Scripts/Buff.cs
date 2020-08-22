@@ -24,13 +24,24 @@ public class BuffSet
 		{
 			if (!buff.isApplied)
 				buff.Apply(player);
+			else
+				buff.leftDuration -= passedTime;
 
-			buff.leftDuration -= passedTime;
-
-			if (buff.leftDuration < 0)
+			if (buff.CheckBuffEnd())
 				buff.Release(player);
 		}
-		buffList.RemoveAll((Buff buff) => { return buff.leftDuration < 0; });
+		buffList.RemoveAll((Buff buff) => { return buff.isEnd; });
+	}
+
+	public void UpdateCount(CountType countType, int change)
+	{
+		foreach (var buff in buffList)
+		{
+			if (buff.buffType.Equals(BuffType.count) && buff.countType.Equals(countType))
+			{
+				buff.leftCount += change;
+			}
+		}
 	}
 
 	public void Clear()
@@ -51,21 +62,38 @@ public class BuffSet
 public class Buff
 {
 	public BuffCategory category;
+	public BuffType buffType;
 	public bool isApplied = false;
 	public bool isGood;
 	public float amount;
-	public float duration;
+
+	public bool isEnd = false;
+
 	public float leftDuration;
+
+	public CountType countType;
+	public int leftCount;
 
 	private GameObject effectObj;
 
-	public Buff(BuffCategory category, bool isGood, float duration, float amount = 0f)
+	public Buff(BuffCategory category, bool isGood, float amount = 0f)
 	{
 		this.category = category;
 		this.isGood = isGood;
 		this.amount = amount + 1;
-		this.duration = duration;
+	}
+
+	public void SetDuration(float duration)
+	{
+		this.buffType = BuffType.duration;
 		this.leftDuration = duration;
+	}
+
+	public void SetCount(CountType countType, int count = 1)
+	{
+		this.buffType = BuffType.count;
+		this.countType = countType;
+		this.leftCount = count;
 	}
 
 	public void Apply(PlayerInfo player)
@@ -74,14 +102,24 @@ public class Buff
 			return;
 		isApplied = true;
 
+		effectObj = InGame.instance.InstantiateBuffEffect(this);
+
 		switch (category)
 		{
-			case BuffCategory.takenDamage:
-				player.takenDamageMultiplier *= amount;
+			case BuffCategory.takeDamage:
+				player.takeDamageMultiplier *= amount;
 				if (amount < 1f)
 				{
-					effectObj = InGame.instance.InstantiateBuffEffect("DamageReduce");
 					effectObj.transform.position = player.tr.position;
+					effectObj.GetComponent<FollowPlayer>().target = player.tr;
+				}
+				break;
+			case BuffCategory.dealDamage:
+				player.dealDamageMultiplier *= amount;
+				if (amount > 1f)
+				{
+					effectObj.transform.position = player.tr.position;
+					effectObj.GetComponent<FollowPlayer>().target = player.tr;
 				}
 				break;
 			case BuffCategory.stiff:
@@ -91,31 +129,63 @@ public class Buff
 			default:
 				break;
 		}
+
+		if (buffType.Equals(BuffType.count) && countType.Equals(CountType.instant))
+			leftCount--;
+	}
+
+	public bool CheckBuffEnd()
+	{
+		if (!isApplied)
+			return false;
+
+		if (buffType.Equals(BuffType.duration))
+		{
+			if (leftDuration > 0)
+				return false;
+		}
+		else if (buffType.Equals(BuffType.count))
+		{
+			if (leftCount > 0)
+				return false;
+		}
+
+		return true;
 	}
 
 	public void Release(PlayerInfo player)
 	{
-		if (!isApplied)
-			return;
-
 		switch (category)
 		{
-			case BuffCategory.takenDamage:
-				player.takenDamageMultiplier /= amount;
-				if (effectObj != null)
-					InGame.instance.DestroyObj(effectObj);
+			case BuffCategory.takeDamage:
+				player.takeDamageMultiplier /= amount;
+				break;
+			case BuffCategory.dealDamage:
+				player.dealDamageMultiplier /= amount;
 				break;
 			case BuffCategory.stiff:
-				if (player.lastAnimState.Equals(AnimState.stiff))
-					player.SetAnimState(AnimState.idle);
 				break;
 			default:
 				break;
 		}
+
+		isEnd = true;
+		if (effectObj != null)
+			InGame.instance.DestroyObj(effectObj);
 	}
 }
 
 public enum BuffCategory
 {
-	takenDamage, stiff
+	takeDamage, dealDamage, stiff
+}
+
+public enum BuffType
+{
+	duration, count
+}
+
+public enum CountType
+{
+	instant, getHit, hit
 }

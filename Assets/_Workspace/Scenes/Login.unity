@@ -1524,6 +1524,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1b7d1ac0d66c5104cb6bc79f72fb4a9a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  playingClass: 0
 --- !u!1 &966223015
 GameObject:
   m_ObjectHideFlags: 0
@@ -2366,6 +2367,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   isP1: 0
+  opponentId: 0
 --- !u!4 &1445798789
 Transform:
   m_ObjectHideFlags: 0
