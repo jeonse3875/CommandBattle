@@ -4,16 +4,20 @@ public class PlayerInfo
 {
 	public bool isPreview;
 	public LobbyUI lobby;
+	public ClassSpecialize specialize;
+
 	public Who me;
 	public Who enemy;
 	public int x;
 	public int y;
 	public int maxHP;
 	public int hp;
-	public ClassType classType;
+	public int resource = 0;
 
 	public float takeDamageMultiplier = 1f;
 	public float dealDamageMultiplier = 1f;
+	public int resourceByDealDamage = 0;
+	public int resourceByTakeDamage = 0;
 
 	public Transform tr;
 	public Animator animator;
@@ -37,6 +41,17 @@ public class PlayerInfo
 
 		tr.position = grid.PosToVec3(Pos());
 		animator = tr.GetComponent<Animator>();
+
+		InitializeByClass();
+	}
+
+	private void InitializeByClass()
+	{
+		specialize = tr.GetComponent<ClassSpecialize>();
+		if (specialize == null)
+			return;
+
+		specialize.Initialize();
 	}
 
 	public (int x, int y) Pos()
@@ -50,20 +65,31 @@ public class PlayerInfo
 		y = pos.y;
 	}
 
-	public void TakeDamage(int damage, int mode)
+	public void TakeDamage(int damage, int originDamage)
 	{
+		int takenDamage = Mathf.RoundToInt(damage * takeDamageMultiplier);
+		int mode;
+
+		if (takenDamage > originDamage)
+			mode = 1;
+		else if (takenDamage.Equals(originDamage))
+			mode = 0;
+		else
+			mode = -1;
+
 		if (isPreview)
 		{
 			lobby.InstantiateDamageTMP(tr, damage.ToString(), mode);
 		}
 		else
 		{
-			int takenDamage = Mathf.RoundToInt(damage * takeDamageMultiplier);
 			hp = Mathf.Clamp(hp - takenDamage, 0, maxHP);
-			InGame.instance.buffSet[me].UpdateCount(CountType.getHit, -1);
+			InGame.instance.buffSet[me].UpdateCount(CountType.takeDamage, -1);
 			Debug.Log(string.Format("'{0}'이 {1}의 피해를 입음", me.ToString(), takenDamage.ToString()));
 			InGame.instance.InstantiateDamageTMP(tr, takenDamage.ToString(), mode);
 			InGame.instance.inGameUI.UpdateHealth(me);
+
+			resource += resourceByTakeDamage;
 
 			if (hp <= 0)
 			{
@@ -76,22 +102,20 @@ public class PlayerInfo
 		}
 	}
 
-	public void DealDamage(int damage)
+	public void DealDamage(int originDamage)
 	{
 		if (isPreview)
 		{
-			lobby.pre_Enemy.TakeDamage(damage, 0);
+			lobby.pre_Enemy.TakeDamage(originDamage, originDamage);
 		}
 		else
 		{
-			int dealtDamage = Mathf.RoundToInt(damage * dealDamageMultiplier);
-			int mode;
-			if (Mathf.Approximately(dealDamageMultiplier, 1f))
-				mode = 0;
-			else
-				mode = 1;
-			InGame.instance.playerInfo[enemy].TakeDamage(dealtDamage, mode);
-			InGame.instance.buffSet[me].UpdateCount(CountType.hit, -1);
+			int damage = Mathf.RoundToInt(originDamage * dealDamageMultiplier);
+
+			InGame.instance.playerInfo[enemy].TakeDamage(damage, originDamage);
+			InGame.instance.buffSet[me].UpdateCount(CountType.dealDamage, -1);
+
+			resource += resourceByDealDamage;
 		}
 	}
 

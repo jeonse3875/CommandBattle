@@ -13,6 +13,12 @@ public class BuffSet
 		this.player = InGame.instance.playerInfo[who];
 	}
 
+	public BuffSet(PlayerInfo player)
+	{
+		this.who = player.me;
+		this.player = player;
+	}
+
 	public void Add(Buff buff)
 	{
 		buffList.Add(buff);
@@ -48,24 +54,25 @@ public class BuffSet
 	{
 		foreach (var buff in buffList)
 		{
-			buff.Release(player);
+			if (buff.isApplied)
+				buff.Release(player);
 		}
 		buffList.Clear();
-	}
-
-	public void DeactivateBuff(bool isGood)
-	{
-		buffList.RemoveAll((Buff buff) => { return buff.isGood.Equals(isGood); });
 	}
 }
 
 public class Buff
 {
+	public bool isPreview = false;
+	public bool isPassive = false;
+
 	public BuffCategory category;
 	public BuffType buffType;
+	public bool isPercentage;
 	public bool isApplied = false;
 	public bool isGood;
-	public float amount;
+	public float amount_Percentage;
+	public int amount_Int;
 
 	public bool isEnd = false;
 
@@ -78,9 +85,23 @@ public class Buff
 
 	public Buff(BuffCategory category, bool isGood, float amount = 0f)
 	{
+		isPercentage = true;
 		this.category = category;
 		this.isGood = isGood;
-		this.amount = amount + 1;
+		this.amount_Percentage = amount + 1;
+	}
+
+	public Buff(BuffCategory category, bool isGood, int amount)
+	{
+		isPercentage = false;
+		this.category = category;
+		this.isGood = isGood;
+		this.amount_Int = amount;
+	}
+
+	public void SetPassive()
+	{
+		this.isPassive = true;
 	}
 
 	public void SetDuration(float duration)
@@ -102,29 +123,51 @@ public class Buff
 			return;
 		isApplied = true;
 
-		effectObj = InGame.instance.InstantiateBuffEffect(this);
+		effectObj = InGame.InstantiateBuffEffect(this);
 
 		switch (category)
 		{
 			case BuffCategory.takeDamage:
-				player.takeDamageMultiplier *= amount;
-				if (amount < 1f)
+				if (isPercentage)
 				{
-					effectObj.transform.position = player.tr.position;
-					effectObj.GetComponent<FollowPlayer>().target = player.tr;
+					player.takeDamageMultiplier *= amount_Percentage;
+					if (amount_Percentage < 1f)
+					{
+						effectObj.transform.position = player.tr.position;
+						effectObj.GetComponent<FollowPlayer>().target = player.tr;
+					}
 				}
+				else
+				{
+
+				}
+				
 				break;
 			case BuffCategory.dealDamage:
-				player.dealDamageMultiplier *= amount;
-				if (amount > 1f)
+				if (isPercentage)
 				{
-					effectObj.transform.position = player.tr.position;
-					effectObj.GetComponent<FollowPlayer>().target = player.tr;
+					player.dealDamageMultiplier *= amount_Percentage;
+					if (amount_Percentage > 1f)
+					{
+						effectObj.transform.position = player.tr.position;
+						effectObj.GetComponent<FollowPlayer>().target = player.tr;
+					}
+				}
+				else
+				{
+
 				}
 				break;
 			case BuffCategory.stiff:
-				InGame.instance.StopCommand(player.me);
+				if (!isPreview)
+					InGame.instance.StopCommand(player.me);
 				player.SetAnimState(AnimState.stiff);
+				break;
+			case BuffCategory.gainResourceByDealDamage:
+				player.resourceByDealDamage += Mathf.RoundToInt(amount_Int);
+				break;
+			case BuffCategory.gainResourceByTakeDamage:
+				player.resourceByTakeDamage += Mathf.RoundToInt(amount_Int);
 				break;
 			default:
 				break;
@@ -137,6 +180,9 @@ public class Buff
 	public bool CheckBuffEnd()
 	{
 		if (!isApplied)
+			return false;
+
+		if (isPassive)
 			return false;
 
 		if (buffType.Equals(BuffType.duration))
@@ -158,12 +204,18 @@ public class Buff
 		switch (category)
 		{
 			case BuffCategory.takeDamage:
-				player.takeDamageMultiplier /= amount;
+				player.takeDamageMultiplier /= amount_Percentage;
 				break;
 			case BuffCategory.dealDamage:
-				player.dealDamageMultiplier /= amount;
+				player.dealDamageMultiplier /= amount_Percentage;
 				break;
 			case BuffCategory.stiff:
+				break;
+			case BuffCategory.gainResourceByDealDamage:
+				player.resourceByDealDamage -= Mathf.RoundToInt(amount_Percentage);
+				break;
+			case BuffCategory.gainResourceByTakeDamage:
+				player.resourceByTakeDamage -= Mathf.RoundToInt(amount_Percentage);
 				break;
 			default:
 				break;
@@ -171,13 +223,13 @@ public class Buff
 
 		isEnd = true;
 		if (effectObj != null)
-			InGame.instance.DestroyObj(effectObj);
+			InGame.DestroyObj(effectObj);
 	}
 }
 
 public enum BuffCategory
 {
-	takeDamage, dealDamage, stiff
+	takeDamage, dealDamage, stiff, gainResourceByTakeDamage, gainResourceByDealDamage
 }
 
 public enum BuffType
@@ -187,5 +239,5 @@ public enum BuffType
 
 public enum CountType
 {
-	instant, getHit, hit
+	instant, takeDamage, dealDamage
 }

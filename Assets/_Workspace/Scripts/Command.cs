@@ -104,12 +104,12 @@ public class CommandSet
 
 public enum CommandId
 {
-	Empty, Move, EarthStrike, WhirlStrike, Guard, CombatReady
+	Empty, Move, EarthStrike, WhirlStrike, Guard, CombatReady, Cutting
 }
 
 public enum ClassType
 {
-	common, knight,
+	common, knight, werewolf
 }
 
 public class Command
@@ -132,7 +132,8 @@ public class Command
 	public PlayerInfo pre_Player;
 	public PlayerInfo pre_Enemy;
 	public Transform pre_Particles;
-
+	public BuffSet pre_BuffSet1;
+	public BuffSet pre_BuffSet2;
 
 	public Command(CommandId id, string name, int time, int limit, int totalDamage, DirectionType dirType, ClassType classType)
 	{
@@ -147,12 +148,14 @@ public class Command
 		isPreview = false;
 	}
 
-	public void SetPreview(Grid grid, PlayerInfo player, PlayerInfo enemy, Transform particles)
+	public void SetPreview(Grid grid, PlayerInfo player, PlayerInfo enemy, Transform particles, (BuffSet set1, BuffSet set2) buffSet)
 	{
 		pre_grid = grid;
 		pre_Player = player;
 		pre_Enemy = enemy;
 		pre_Particles = particles;
+		pre_BuffSet1 = buffSet.set1;
+		pre_BuffSet2 = buffSet.set2;
 	}
 
 	public virtual IEnumerator Execute()
@@ -264,6 +267,9 @@ public class Command
 			case ClassType.knight:
 				className = "기사";
 				break;
+			case ClassType.werewolf:
+				className = "늑대인간";
+				break;
 			default:
 				break;
 		}
@@ -303,6 +309,11 @@ public class Command
 		return Resources.Load<Sprite>("CommandIcon/" + id.ToString());
 	}
 
+	public static Sprite GetClassIcon(ClassType cType)
+	{
+		return Resources.Load<Sprite>("ClassIcon/" + cType.ToString());
+	}
+
 	public void BattleLog(string message)
 	{
 		if (isPreview)
@@ -313,9 +324,18 @@ public class Command
 	public void ApplyBuff(Who who, Buff buff)
 	{
 		if (isPreview)
-			return;
+		{
+			buff.isPreview = true;
 
-		InGame.instance.buffSet[who].Add(buff);
+			if (who.Equals(Who.p1))
+				pre_BuffSet1.Add(buff);
+			else
+				pre_BuffSet2.Add(buff);
+		}
+		else
+		{
+			InGame.instance.buffSet[who].Add(buff);
+		}
 	}
 
 	public void Hit(int damage)
@@ -341,7 +361,8 @@ public class EmptyCommand : Command
 	public override IEnumerator Execute()
 	{
 		Debug.Log(string.Format("[{0}] 대기", commander.ToString()));
-		if (GetCommanderInfo().lastAnimState.Equals(AnimState.run))
+		AnimState lastState = GetCommanderInfo().lastAnimState;
+		if (lastState.Equals(AnimState.run) || lastState.Equals(AnimState.stiff))
 			SetAnimState(AnimState.idle);
 		yield break;
 	}
@@ -517,10 +538,10 @@ public class CombatReadyCommand : Command
 		BattleLog("시전");
 
 		Buff takeDamageReduce = new Buff(BuffCategory.takeDamage, true, -0.3f);
-		takeDamageReduce.SetCount(CountType.getHit, 1);
+		takeDamageReduce.SetCount(CountType.takeDamage, 1);
 
 		Buff dealDamageIncrease = new Buff(BuffCategory.dealDamage, true, +0.3f);
-		dealDamageIncrease.SetCount(CountType.hit, 1);
+		dealDamageIncrease.SetCount(CountType.dealDamage, 1);
 		var effect = GetEffect();
 		effect.transform.position = GetCommanderInfo().tr.position;
 
@@ -532,6 +553,22 @@ public class CombatReadyCommand : Command
 		ApplyBuff(commander, dealDamageIncrease);
 		yield return new WaitForSeconds(0.2f);
 		SetAnimState(AnimState.idle);
+
+		yield break;
+	}
+}
+
+public class CuttingCommand : Command
+{
+	public CuttingCommand(Direction dir = Direction.right)
+		: base(CommandId.Cutting, "베기/할퀴기", 1, 10, 0, DirectionType.cross, ClassType.werewolf)
+	{
+		description = "적을 베어가릅니다. 늑대 상태에서는 전방의 적을 할퀴어 공격합니다.";
+	}
+
+	public override IEnumerator Execute()
+	{
+		BattleLog("공격");
 
 		yield break;
 	}

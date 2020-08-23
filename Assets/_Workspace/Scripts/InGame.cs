@@ -129,7 +129,24 @@ public class InGame : MonoBehaviour
 		buffSet[Who.p1] = new BuffSet(Who.p1);
 		buffSet[Who.p2] = new BuffSet(Who.p2);
 
+		AddPassive(Who.p1);
+		AddPassive(Who.p2);
+
 		inGameUI.InitializeGame();
+	}
+
+	private void AddPassive(Who who)
+	{
+		if (playerInfo[who].specialize == null)
+			return;
+
+		var passives = playerInfo[who].specialize.GetPassive();
+
+		foreach(var passive in passives)
+		{
+			passive.isPassive = true;
+			buffSet[who].Add(passive);
+		}
 	}
 
 	private void InitializeVariable()
@@ -292,7 +309,7 @@ public class InGame : MonoBehaviour
 		tmp.SetEffect(mode);
 	}
 
-	public GameObject InstantiateBuffEffect(Buff buff)
+	public static GameObject InstantiateBuffEffect(Buff buff)
 	{
 		string name = string.Format("Buff/{0}_{1}_{2}", buff.category.ToString(), buff.isGood.ToString(), buff.buffType.ToString());
 		var obj = Resources.Load<GameObject>(name);
@@ -302,7 +319,7 @@ public class InGame : MonoBehaviour
 			return null;
 	}
 
-	public void DestroyObj(GameObject obj)
+	public static void DestroyObj(GameObject obj)
 	{
 		Destroy(obj);
 	}

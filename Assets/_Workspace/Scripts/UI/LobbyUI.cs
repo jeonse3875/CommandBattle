@@ -25,9 +25,11 @@ public class LobbyUI : MonoBehaviour
 
 	public GameObject group_MountCommon;
 
+	public GameObject group_PlayingClass;
+
 	public bool isInit = true;
 
-	
+
 	public Transform commandListTapParentTr;
 	public Transform mountedCommandTapParentTr;
 	public GameObject tap;
@@ -36,7 +38,8 @@ public class LobbyUI : MonoBehaviour
 	public GameObject commandInfoBlock;
 	public Transform mountedListScrollParentTr;
 	public GameObject mountedListScroll;
-	public Transform classBlockParentTr;
+	public Transform classBlockParentTr_MountCommon;
+	public Transform classBlockParentTr_PlayingClass;
 	public GameObject classBlock;
 	public Dictionary<ClassType, ClassTap> classTapDic_List = new Dictionary<ClassType, ClassTap>();
 	public Dictionary<ClassType, ClassTap> classTapDic_Mounted = new Dictionary<ClassType, ClassTap>();
@@ -67,6 +70,12 @@ public class LobbyUI : MonoBehaviour
 	private Command pre_Command;
 	private List<GameObject> pre_ObjList = new List<GameObject>();
 	private List<DamageTMP> pre_TMPList = new List<DamageTMP>();
+	private BuffSet pre_BuffSet1;
+	private BuffSet pre_BuffSet2;
+	private GameObject pre_P1Obj;
+	private GameObject pre_P2Obj;
+
+	#region LifeCycle
 
 	private void Start()
 	{
@@ -74,6 +83,16 @@ public class LobbyUI : MonoBehaviour
 		BackendManager.instance.JoinMatchingServer();
 		AddHandler();
 		SetPreview();
+		UpdateCommandInfoUI();
+	}
+
+	private void LateUpdate()
+	{
+		if (pre_BuffSet1 != null && pre_BuffSet2 != null)
+		{
+			pre_BuffSet1.Update(Time.deltaTime);
+			pre_BuffSet2.Update(Time.deltaTime);
+		}
 	}
 
 	private void OnDestroy()
@@ -95,26 +114,46 @@ public class LobbyUI : MonoBehaviour
 		BackendManager.instance.GameStartEvent -= GoToInGameScene;
 	}
 
+	#endregion
+
 	private void SetPreview()
 	{
 		pre_Grid = new Grid(5, 5, 5f, new Vector3(-10, 0, -10));
-		pre_Player = new PlayerInfo(Who.p1, (1, 2), GameObject.FindGameObjectWithTag("P1").transform)
-		{
-			isPreview = true,
-			lobby = this
-		};
-		pre_Enemy = new PlayerInfo(Who.p1, (3, 2), GameObject.FindGameObjectWithTag("P2").transform)
-		{
-			isPreview = true,
-			lobby = this
-		};
 		pre_Particles = GameObject.Find("Particles_p1").transform;
 	}
 
 	public void StartPreview(Command command)
 	{
-		command.SetPreview(pre_Grid, pre_Player, pre_Enemy, pre_Particles);
+		ClassType cType = command.classType;
+		if (command.classType.Equals(ClassType.common))
+			cType = ClassType.knight;
+
+		if (pre_P1Obj != null && pre_P2Obj != null)
+		{
+			Destroy(pre_P1Obj);
+			Destroy(pre_P2Obj);
+		}
+
+		pre_P1Obj = Instantiate(Resources.Load<GameObject>("Character/" + cType.ToString() + "_Blue"));
+		pre_P2Obj = Instantiate(Resources.Load<GameObject>("Character/" + cType.ToString() + "_Red"));
+
+		pre_Player = new PlayerInfo(Who.p1, (1, 2), pre_P1Obj.transform)
+		{
+			isPreview = true,
+			lobby = this
+		};
+		pre_Enemy = new PlayerInfo(Who.p2, (3, 2), pre_P2Obj.transform)
+		{
+			isPreview = true,
+			lobby = this
+		};
+
+		pre_BuffSet1 = new BuffSet(pre_Player);
+		pre_BuffSet2 = new BuffSet(pre_Enemy);
+
+		command.SetPreview(pre_Grid, pre_Player, pre_Enemy, pre_Particles, (pre_BuffSet1, pre_BuffSet2));
 		pre_Command = command;
+		pre_Command.commander = Who.p1;
 		previewRoutine = StartCoroutine(Preview());
 	}
 
@@ -122,6 +161,7 @@ public class LobbyUI : MonoBehaviour
 	{
 		WaitForSeconds wait1 = new WaitForSeconds(pre_Command.time);
 		WaitForSeconds wait2 = new WaitForSeconds(1f);
+
 		while (true)
 		{
 			pre_Player.SetPos(pre_Command.previewPos.player);
@@ -129,30 +169,47 @@ public class LobbyUI : MonoBehaviour
 			pre_Enemy.SetPos(pre_Command.previewPos.enemy);
 			pre_Enemy.tr.position = pre_Grid.PosToVec3(pre_Command.previewPos.enemy);
 			pre_Player.LookEnemy();
+			pre_Enemy.tr.LookAt(pre_Player.tr);
 
 			previewExeRoutine = StartCoroutine(pre_Command.Execute());
 			yield return wait1;
 			pre_Command.SetAnimState(AnimState.idle);
 			yield return wait2;
 
-			foreach (var tmp in pre_TMPList)
-			{
-				if (tmp != null)
-					tmp.seq.Kill();
-			}
-
-			foreach (var obj in pre_ObjList)
-			{
-				if (obj != null)
-					Destroy(obj);
-			}
-			pre_ObjList.Clear();
+			ResetPreview();
 		}
+	}
+
+	private void ResetPreview()
+	{
+		pre_BuffSet1.Clear();
+		pre_BuffSet2.Clear();
+
+		pre_Player.SetAnimState(AnimState.idle);
+		pre_Enemy.SetAnimState(AnimState.idle);
+
+		foreach (var tmp in pre_TMPList)
+		{
+			if (tmp != null)
+				tmp.seq.Kill();
+		}
+
+		foreach (var obj in pre_ObjList)
+		{
+			if (obj != null)
+				Destroy(obj);
+		}
+		pre_ObjList.Clear();
 	}
 
 	public void Button_StartRandomMatchMaking()
 	{
 		BackendManager.instance.JoinMatchingServer();
+		group_PlayingClass.SetActive(true);
+	}
+
+	public void RequestMatchMaking()
+	{
 		BackendManager.instance.RequestMatchMaking(MatchType.Random, MatchModeType.OneOnOne);
 	}
 
@@ -160,7 +217,6 @@ public class LobbyUI : MonoBehaviour
 	{
 		group_Main.SetActive(false);
 		group_Item.SetActive(true);
-		UpdateCommandInfoUI();
 	}
 
 	public void Button_BackToMain()
@@ -193,30 +249,26 @@ public class LobbyUI : MonoBehaviour
 		group_MountCommon.SetActive(false);
 	}
 
+	public void Button_ClosePlayingClass()
+	{
+		group_PlayingClass.SetActive(false);
+	}
+
 	public void Button_CloseDetail()
 	{
 		group_Detail.SetActive(false);
 		previewCamera.SetActive(false);
+
 		if (previewRoutine != null)
 			StopCoroutine(previewRoutine);
 		if (previewExeRoutine != null)
 			StopCoroutine(previewExeRoutine);
+
 		ParticleSystem particle = pre_Command.GetEffect();
 		particle.Stop();
 		particle.Clear();
-		pre_Command.SetAnimState(AnimState.idle);
-		foreach (var tmp in pre_TMPList)
-		{
-			if (tmp != null)
-				tmp.seq.Kill();
-		}
 
-		foreach (var obj in pre_ObjList)
-		{
-			if (obj != null)
-				Destroy(obj);
-		}
-		pre_ObjList.Clear();
+		ResetPreview();
 	}
 
 	private void UpdateCommandInfoUI()
@@ -257,9 +309,13 @@ public class LobbyUI : MonoBehaviour
 				classTap.SetType(cType);
 				classTapDic_Mounted[cType] = classTap;
 
-				var classBlockObj = Instantiate(classBlock, classBlockParentTr);
-				classBlockObj.name = cType.ToString();
-				classBlockObj.GetComponent<ClassBlock>().SetBlock(cType, ClassChoiceType.mountCommon);
+				var classBlockObj_MountCommon = Instantiate(classBlock, classBlockParentTr_MountCommon);
+				classBlockObj_MountCommon.name = cType.ToString();
+				classBlockObj_MountCommon.GetComponent<ClassBlock>().SetBlock(cType, ClassChoiceType.mountCommon);
+
+				var classBlockObj_PlayingClass = Instantiate(classBlock, classBlockParentTr_PlayingClass);
+				classBlockObj_PlayingClass.name = cType.ToString();
+				classBlockObj_PlayingClass.GetComponent<ClassBlock>().SetBlock(cType, ClassChoiceType.selectPlayingClass);
 			}
 
 			#endregion
@@ -272,7 +328,7 @@ public class LobbyUI : MonoBehaviour
 			commandListObjDic[cType] = commandListObj;
 
 			Transform contentTr = commandListObj.transform.GetChild(0).GetChild(0);
-			foreach(CommandId id in UserInfo.instance.ownCommands[cType])
+			foreach (CommandId id in UserInfo.instance.ownCommands[cType])
 			{
 				Command command = Command.FromId(id);
 				wholeCommandIdList.Remove(id);
@@ -284,10 +340,10 @@ public class LobbyUI : MonoBehaviour
 				infoBlock.SetOwn(true);
 			}
 
-			foreach(CommandId id in wholeCommandIdList)
+			foreach (CommandId id in wholeCommandIdList)
 			{
 				Command command = Command.FromId(id);
-				if (command.classType == cType && command.id!= CommandId.Empty)
+				if (command.classType == cType && command.id != CommandId.Empty)
 				{
 					GameObject commandObj = Instantiate(commandInfoBlock, contentTr);
 					commandObj.name = id.ToString();
@@ -301,7 +357,7 @@ public class LobbyUI : MonoBehaviour
 
 			#region 장착한 커맨드 리스트 생성
 
-			if(cType != ClassType.common)
+			if (cType != ClassType.common)
 			{
 				GameObject mountedListObj = Instantiate(mountedListScroll, mountedListScrollParentTr);
 				mountedListObj.SetActive(isFirstClass);

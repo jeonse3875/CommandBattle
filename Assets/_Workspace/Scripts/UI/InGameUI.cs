@@ -40,6 +40,8 @@ public class InGameUI : MonoBehaviour
 	public GameObject logBlock;
 	public Transform logParentTr_P1;
 	public Transform logParentTr_P2;
+	public ResourcePanel resourcePanel_P1;
+	public ResourcePanel resourcePanel_P2;
 	private List<GameObject> logList = new List<GameObject>();
 
 	private void Update()
@@ -69,8 +71,12 @@ public class InGameUI : MonoBehaviour
 			text_Nickname_P2.text = InGame.instance.playerNickname;
 			text_Nickname_P1.text = InGame.instance.opponentNickname;
 		}
+
 		slider_HP_P1.value = 1f;
 		slider_HP_P2.value = 1f;
+
+		resourcePanel_P1.SetPanel(InGame.instance.playingCType[Who.p1]);
+		resourcePanel_P2.SetPanel(InGame.instance.playingCType[Who.p2]);
 
 		Instantiate(youArrow, InGame.instance.playerInfo[InGame.instance.me].tr.position, Quaternion.identity);
 	}

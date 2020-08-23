@@ -3,40 +3,38 @@ using UnityEngine.UI;
 
 public enum ClassChoiceType
 { 
-    mountCommon
+    mountCommon, selectPlayingClass
 }
 
 public class ClassBlock : MonoBehaviour
 {
     public ClassChoiceType choiceType;
     public ClassType classType;
+    public Image image_ClassIcon;
     public Text text_Class;
-    public void SetBlock(ClassType cType, ClassChoiceType cType1)
+
+    public void SetBlock(ClassType cType, ClassChoiceType choiceType)
     {
         classType = cType;
-        choiceType = cType1;
-        switch (cType)
-        {
-            case ClassType.common:
-                text_Class.text = "공용";
-                break;
-            case ClassType.knight:
-                text_Class.text = "기사";
-                break;
-            default:
-                break;
-        }
+        this.choiceType = choiceType;
+        this.image_ClassIcon.sprite = Command.GetClassIcon(cType);
+        text_Class.text = Command.GetKoreanClassName(cType);
     }
 
     public void Button_ChooseClass()
     {
         LobbyUI lobby = GameObject.Find("LobbyUI").GetComponent<LobbyUI>();
-        lobby.group_MountCommon.SetActive(false);
 
         switch (choiceType)
         {
             case ClassChoiceType.mountCommon:
                 UserInfo.instance.MountCommand(classType, lobby.commonCommandIdForWaiting);
+                lobby.group_MountCommon.SetActive(false);
+                break;
+            case ClassChoiceType.selectPlayingClass:
+                UserInfo.instance.playingClass = classType;
+                lobby.group_PlayingClass.SetActive(false);
+                lobby.RequestMatchMaking();
                 break;
             default:
                 break;

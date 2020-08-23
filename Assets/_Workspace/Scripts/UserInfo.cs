@@ -101,9 +101,25 @@ public class UserInfo : MonoBehaviour
 
 		foreach(ClassType cType in Enum.GetValues(typeof(ClassType)))
 		{
-			ownCommands[cType] = GetCommandIdListFromTable(ownCommandData["M"][cType.ToString()]);
-			if (cType != ClassType.common)
-				mountedCommands[cType] = GetCommandIdListFromTable(mountedCommandData["M"][cType.ToString()]);
+			try
+			{
+				ownCommands[cType] = GetCommandIdListFromTable(ownCommandData["M"][cType.ToString()]);
+			}
+			catch(KeyNotFoundException)
+			{
+				ownCommands[cType] = new List<CommandId>();
+			}
+
+			try
+			{
+				if (cType != ClassType.common)
+					mountedCommands[cType] = GetCommandIdListFromTable(mountedCommandData["M"][cType.ToString()]);
+			}
+			catch (KeyNotFoundException)
+			{
+				mountedCommands[cType] = new List<CommandId>();
+			}
+
 		}
 
 		Debug.Log("커맨드 정보 업데이트 완료");

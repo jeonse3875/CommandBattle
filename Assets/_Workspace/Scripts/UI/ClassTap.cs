@@ -12,7 +12,7 @@ public class ClassTap : MonoBehaviour
     private void Start()
     {
         lobbyUI = GameObject.Find("LobbyUI").GetComponent<LobbyUI>();
-        image_ClassIcon.sprite = Resources.Load<Sprite>("ClassIcon/" + cType.ToString());
+        image_ClassIcon.sprite = Command.GetClassIcon(cType);
         text_ClassName.text = Command.GetKoreanClassName(cType);
     }
 
