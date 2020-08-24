@@ -19,6 +19,14 @@ public class Werewolf : ClassSpecialize
         return new Buff[] { gainResource1, gainResource2 };
     }
 
+    public override void SetBaseStatus(PlayerInfo player)
+    {
+        player.maxHP = 200;
+        player.hp = 200;
+        player.resourceClamp = (0, 3);
+        player.Resource = 0;
+    }
+
     public override void DeTransform()
     {
         model_Wolf.SetActive(false);

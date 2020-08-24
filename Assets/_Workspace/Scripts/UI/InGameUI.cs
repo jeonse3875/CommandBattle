@@ -72,8 +72,8 @@ public class InGameUI : MonoBehaviour
 			text_Nickname_P1.text = InGame.instance.opponentNickname;
 		}
 
-		slider_HP_P1.value = 1f;
-		slider_HP_P2.value = 1f;
+		UpdateHealth(Who.p1);
+		UpdateHealth(Who.p2);
 
 		resourcePanel_P1.SetPanel(InGame.instance.playingCType[Who.p1]);
 		resourcePanel_P2.SetPanel(InGame.instance.playingCType[Who.p2]);

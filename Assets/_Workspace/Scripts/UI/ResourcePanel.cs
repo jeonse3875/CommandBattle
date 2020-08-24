@@ -49,7 +49,7 @@ public class ResourcePanel : MonoBehaviour
 
 	public void UpdatePanel()
 	{
-		resource = InGame.instance.playerInfo[who].resource;
+		resource = InGame.instance.playerInfo[who].Resource;
 
 		switch (cType)
 		{

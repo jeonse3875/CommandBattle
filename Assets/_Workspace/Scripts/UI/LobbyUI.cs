@@ -83,7 +83,7 @@ public class LobbyUI : MonoBehaviour
 		BackendManager.instance.JoinMatchingServer();
 		AddHandler();
 		SetPreview();
-		UpdateCommandInfoUI();
+		InitializeCommandInfoUI();
 	}
 
 	private void LateUpdate()
@@ -159,11 +159,23 @@ public class LobbyUI : MonoBehaviour
 
 	private IEnumerator Preview()
 	{
+		WaitForSeconds wait0 = new WaitForSeconds(0.7f);
 		WaitForSeconds wait1 = new WaitForSeconds(pre_Command.time);
-		WaitForSeconds wait2 = new WaitForSeconds(1f);
+		WaitForSeconds wait2 = new WaitForSeconds(0.7f);
+		pre_Player.transformCount = 1;
 
 		while (true)
 		{
+			if (pre_Player.transformCount.Equals(0))
+			{
+				pre_Player.transformCount = 1;
+				pre_Player.specialize.Transform();
+			}
+			else
+			{
+				pre_Player.transformCount = 0;
+				pre_Player.specialize.DeTransform();
+			}
 			pre_Player.SetPos(pre_Command.previewPos.player);
 			pre_Player.tr.position = pre_Grid.PosToVec3(pre_Command.previewPos.player);
 			pre_Enemy.SetPos(pre_Command.previewPos.enemy);
@@ -171,6 +183,7 @@ public class LobbyUI : MonoBehaviour
 			pre_Player.LookEnemy();
 			pre_Enemy.tr.LookAt(pre_Player.tr);
 
+			yield return wait0;
 			previewExeRoutine = StartCoroutine(pre_Command.Execute());
 			yield return wait1;
 			pre_Command.SetAnimState(AnimState.idle);
@@ -223,7 +236,7 @@ public class LobbyUI : MonoBehaviour
 	{
 		group_Main.SetActive(true);
 		group_Item.SetActive(false);
-		UserInfo.instance.UploadCommandInfo();
+		//UserInfo.instance.UploadCommandInfo();
 	}
 
 	public void Button_CommandList()
@@ -271,7 +284,7 @@ public class LobbyUI : MonoBehaviour
 		ResetPreview();
 	}
 
-	private void UpdateCommandInfoUI()
+	private void InitializeCommandInfoUI()
 	{
 		if (!isInit)
 			return;
@@ -411,13 +424,13 @@ public class LobbyUI : MonoBehaviour
 		Destroy(obj, destroyTime);
 	}
 
-	public void InstantiateDamageTMP(Transform tr, string message, int mode)
+	public void InstantiateDamageTMP(Transform tr, string message, int mode, bool isMultiple = false)
 	{
 		var obj = Instantiate(damageText);
 		obj.transform.position = tr.position + Vector3.up * 3.75f;
 		var tmp = obj.GetComponent<DamageTMP>();
 		tmp.message = message;
-		tmp.SetEffect(mode);
+		tmp.SetEffect(mode, isMultiple);
 		pre_ObjList.Add(obj);
 		pre_TMPList.Add(tmp);
 	}

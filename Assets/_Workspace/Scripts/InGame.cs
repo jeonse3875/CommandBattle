@@ -45,6 +45,8 @@ public class InGame : MonoBehaviour
 
 	public Dictionary<Who, BuffSet> buffSet = new Dictionary<Who, BuffSet>();
 
+	public InGameCamera cam;
+
 	#region LifeCycle
 	private void Start()
 	{
@@ -60,6 +62,12 @@ public class InGame : MonoBehaviour
 
 	private void LateUpdate()
 	{
+		if (playerInfo.ContainsKey(Who.p1) && playerInfo.ContainsKey(Who.p2))
+		{
+			playerInfo[Who.p1].SetPos(grid.Vec3ToPos(playerInfo[Who.p1].tr.position));
+			playerInfo[Who.p2].SetPos(grid.Vec3ToPos(playerInfo[Who.p2].tr.position));
+		}
+
 		if (buffSet.ContainsKey(Who.p1) && buffSet.ContainsKey(Who.p2))
 		{
 			buffSet[Who.p1].Update(Time.deltaTime);
@@ -129,6 +137,8 @@ public class InGame : MonoBehaviour
 		buffSet[Who.p1] = new BuffSet(Who.p1);
 		buffSet[Who.p2] = new BuffSet(Who.p2);
 
+		cam.ResetCamera();
+
 		AddPassive(Who.p1);
 		AddPassive(Who.p2);
 
@@ -141,6 +151,9 @@ public class InGame : MonoBehaviour
 			return;
 
 		var passives = playerInfo[who].specialize.GetPassive();
+
+		if (passives == null)
+			return;
 
 		foreach(var passive in passives)
 		{
@@ -210,7 +223,32 @@ public class InGame : MonoBehaviour
 		playerInfo[Who.p2].SetAnimState(AnimState.idle);
 		buffSet[Who.p1].Clear();
 		buffSet[Who.p2].Clear();
+
+		yield return new WaitForSeconds(0.5f);
+
+		yield return StartCoroutine(WerewolfTransform(Who.p1));
+		yield return StartCoroutine(WerewolfTransform(Who.p2));
+
 		BackendManager.instance.SendData(new BattleEndMsg());
+	}
+
+	private IEnumerator WerewolfTransform(Who who)
+	{
+		bool canTransform = playingCType[who].Equals(ClassType.werewolf)
+			&& playerInfo[who].Resource >= 3 && playerInfo[who].transformCount.Equals(0);
+
+		if (!canTransform)
+			yield break;
+
+		yield return new WaitForSeconds(cam.ZoomInTarget(playerInfo[who].tr.position));
+		playerInfo[who].SetAnimState(AnimState.innerWildness);
+		yield return new WaitForSeconds(0.5f);
+		playerInfo[who].specialize.Transform();
+		yield return new WaitForSeconds(0.5f);
+		playerInfo[who].SetAnimState(AnimState.idle);
+		yield return new WaitForSeconds(cam.ZoomOut());
+
+		playerInfo[who].transformCount++;
 	}
 
 	private bool IsBattleEnd()
@@ -300,13 +338,13 @@ public class InGame : MonoBehaviour
 		}
 	}
 
-	public void InstantiateDamageTMP(Transform tr, string message, int mode)
+	public void InstantiateDamageTMP(Transform tr, string message, int mode, bool isMultiple = false)
 	{
 		var obj = Instantiate(damageText);
 		obj.transform.position = tr.position + Vector3.up * 3.75f;
 		var tmp = obj.GetComponent<DamageTMP>();
 		tmp.message = message;
-		tmp.SetEffect(mode);
+		tmp.SetEffect(mode, isMultiple);
 	}
 
 	public static GameObject InstantiateBuffEffect(Buff buff)

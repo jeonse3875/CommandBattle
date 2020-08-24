@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DG.Tweening;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -104,7 +105,12 @@ public class CommandSet
 
 public enum CommandId
 {
-	Empty, Move, EarthStrike, WhirlStrike, Guard, CombatReady, Cutting
+	//공용
+	Empty, Move, Guard,
+	//기사
+	EarthStrike, WhirlStrike, CombatReady, 
+	//늑대인간
+	Cutting, LeapAttack, InnerWildness
 }
 
 public enum ClassType
@@ -338,17 +344,19 @@ public class Command
 		}
 	}
 
-	public void Hit(int damage)
+	public void Hit(int damage, bool isMultiple = false)
 	{
-		GetCommanderInfo().DealDamage(damage);
+		GetCommanderInfo().DealDamage(damage, isMultiple);
 	}
 
-	public void Hit(int damage, Buff deBuff)
+	public void Hit(int damage, Buff deBuff, bool isMultiple = false)
 	{
-		GetCommanderInfo().DealDamage(damage);
+		GetCommanderInfo().DealDamage(damage, isMultiple);
 		ApplyBuff(Enemy(), deBuff);
 	}
 }
+
+#region 공용 커맨드
 
 public class EmptyCommand : Command
 {
@@ -407,98 +415,8 @@ public class MoveCommand : Command
 		{
 			progress += Time.deltaTime;
 			tr.position = Vector3.Lerp(startPosVec, targetPosVec, Mathf.Clamp(progress / (float)time, 0f, 1f));
-			player.SetPos(grid.Vec3ToPos(tr.position));
 			yield return null;
 		}
-	}
-}
-
-public class EarthStrikeCommand : Command
-{
-	public EarthStrikeCommand(Direction dir = Direction.right)
-		: base(CommandId.EarthStrike, "대지의 일격", 2, 3, 30, DirectionType.cross, ClassType.knight)
-	{
-		this.dir = dir;
-		description = "대지를 강타해 전방의 적에게 피해를 주고 기절시킵니다.";
-		previewPos = ((1, 2), (3, 2));
-	}
-
-	public override IEnumerator Execute()
-	{
-		BattleLog(string.Format("{0} 공격.", Grid.DirToKorean(dir)));
-
-		PlayerInfo player = GetCommanderInfo();
-		PlayerInfo enemy = GetEnemyInfo();
-		Grid grid = GetGrid();
-
-		List<(int x, int y)> attackArea = new List<(int x, int y)> { (0, 1), (0, 2) };
-		attackArea = CalculateArea(attackArea, player.Pos(), dir);
-
-		player.tr.LookAt(grid.PosToVec3(attackArea[0]));
-
-		ParticleSystem effect = GetEffect();
-		effect.transform.position = grid.PosToVec3(player.Pos());
-		effect.transform.LookAt(grid.PosToVec3(attackArea[0]));
-
-		// 수치 조정
-		int damage = 30;
-
-		SetAnimState(AnimState.earthStrike);
-		DisplayAttackRange(attackArea, 0.4f);
-		yield return new WaitForSeconds(0.3f);
-		effect.Play();
-		yield return new WaitForSeconds(0.25f);
-		if (CheckEnemyInArea(attackArea))
-		{
-			Buff stiff = new Buff(BuffCategory.stiff, false);
-			stiff.SetCount(CountType.instant);
-
-			Hit(damage, stiff);
-			
-			BattleLog(string.Format("{0}의 피해를 주고 경직시킴.", damage.ToString()));
-		}
-		yield return new WaitForSeconds(0.4f);
-		SetAnimState(AnimState.idle);
-	}
-}
-
-public class WhirlStrikeCommand : Command
-{
-	public WhirlStrikeCommand(Direction dir = Direction.right)
-		: base(CommandId.WhirlStrike, "회오리 타격", 1, 5, 20, DirectionType.none, ClassType.knight)
-	{
-		description = "칼을 휘둘러 주변의 적을 빠르게 공격합니다.";
-		previewPos = ((2, 2), (3, 2));
-	}
-
-	public override IEnumerator Execute()
-	{
-		BattleLog("공격");
-
-		PlayerInfo player = GetCommanderInfo();
-		PlayerInfo enemy = GetEnemyInfo();
-		Grid grid = GetGrid();
-
-		List<(int x, int y)> attackArea = new List<(int x, int y)> { (0, 1), (0, -1), (1, 1), (1, 0), (1, -1), (-1, 1), (-1, 0), (-1, -1) };
-		attackArea = CalculateArea(attackArea, player.Pos());
-
-		ParticleSystem effect = GetEffect();
-		effect.transform.position = grid.PosToVec3(player.Pos()) + new Vector3(0, 1.5f, 0);
-
-		//수치 조정
-		int damage = 20;
-		SetAnimState(AnimState.whirlStrike);
-		DisplayAttackRange(attackArea, 0.6f);
-		yield return new WaitForSeconds(0.5f);
-		effect.Play();
-		yield return new WaitForSeconds(0.15f);
-		if (CheckEnemyInArea(attackArea))
-		{
-			Hit(damage);
-			BattleLog(string.Format("공격 적중. {0}의 피해", damage.ToString()));
-		}
-		yield return new WaitForSeconds(0.3f);
-		SetAnimState(AnimState.idle);
 	}
 }
 
@@ -507,7 +425,7 @@ public class GuardCommand : Command
 	public GuardCommand(Direction dir = Direction.right)
 		: base(CommandId.Guard, "방어", 2, 10, 0, DirectionType.none, ClassType.common)
 	{
-		description = "2초 동안 받는 피해를 50% 감소시킵니다.";
+		description = "방어 태세를 취하여 2초 동안 받는 피해를 50% 감소시킵니다.";
 	}
 
 	public override IEnumerator Execute()
@@ -525,22 +443,111 @@ public class GuardCommand : Command
 	}
 }
 
+#endregion
+
+#region 기사 커맨드
+
+public class EarthStrikeCommand : Command
+{
+	public EarthStrikeCommand(Direction dir = Direction.right)
+		: base(CommandId.EarthStrike, "대지의 일격", 2, 2, 50, DirectionType.cross, ClassType.knight)
+	{
+		this.dir = dir;
+		description = "대지를 강타해 전방의 적에게 피해를 주고 경직시킵니다.";
+		previewPos = ((1, 2), (3, 2));
+	}
+
+	public override IEnumerator Execute()
+	{
+		BattleLog(string.Format("{0} 공격.", Grid.DirToKorean(dir)));
+
+		PlayerInfo player = GetCommanderInfo();
+		Grid grid = GetGrid();
+
+		List<(int x, int y)> attackArea = new List<(int x, int y)> { (0, 1), (0, 2) };
+		attackArea = CalculateArea(attackArea, player.Pos(), dir);
+
+		player.tr.LookAt(grid.PosToVec3(attackArea[0]));
+
+		ParticleSystem effect = GetEffect();
+		effect.transform.position = grid.PosToVec3(player.Pos());
+		effect.transform.LookAt(grid.PosToVec3(attackArea[0]));
+
+		// 수치 조정
+		int damage = this.totalDamage;
+
+		SetAnimState(AnimState.earthStrike);
+		DisplayAttackRange(attackArea, 0.4f);
+		yield return new WaitForSeconds(0.3f);
+		effect.Play();
+		yield return new WaitForSeconds(0.25f);
+		if (CheckEnemyInArea(attackArea))
+		{
+			Buff stiff = new Buff(BuffCategory.stiff, false);
+			stiff.SetCount(CountType.instant);
+
+			Hit(damage, stiff);
+
+			BattleLog(string.Format("{0}의 피해를 주고 경직시킴.", damage.ToString()));
+		}
+		yield return new WaitForSeconds(0.4f);
+		SetAnimState(AnimState.idle);
+	}
+}
+public class WhirlStrikeCommand : Command
+{
+	public WhirlStrikeCommand(Direction dir = Direction.right)
+		: base(CommandId.WhirlStrike, "회오리 타격", 1, 3, 30, DirectionType.none, ClassType.knight)
+	{
+		description = "칼을 휘둘러 주변의 적을 공격합니다.";
+		previewPos = ((2, 2), (3, 2));
+	}
+
+	public override IEnumerator Execute()
+	{
+		BattleLog("공격");
+
+		PlayerInfo player = GetCommanderInfo();
+		Grid grid = GetGrid();
+
+		List<(int x, int y)> attackArea = new List<(int x, int y)> { (0, 1), (0, -1), (1, 1), (1, 0), (1, -1), (-1, 1), (-1, 0), (-1, -1) };
+		attackArea = CalculateArea(attackArea, player.Pos());
+
+		ParticleSystem effect = GetEffect();
+		effect.transform.position = grid.PosToVec3(player.Pos()) + new Vector3(0, 1.5f, 0);
+
+		// 수치조정
+		int damage = this.totalDamage;
+		SetAnimState(AnimState.whirlStrike);
+		DisplayAttackRange(attackArea, 0.6f);
+		yield return new WaitForSeconds(0.5f);
+		effect.Play();
+		yield return new WaitForSeconds(0.15f);
+		if (CheckEnemyInArea(attackArea))
+		{
+			Hit(damage);
+			BattleLog(string.Format("공격 적중. {0}의 피해", damage.ToString()));
+		}
+		yield return new WaitForSeconds(0.3f);
+		SetAnimState(AnimState.idle);
+	}
+}
 public class CombatReadyCommand : Command
 {
 	public CombatReadyCommand(Direction dir = Direction.right)
-		: base(CommandId.CombatReady, "전투준비", 2, 1, 0, DirectionType.none, ClassType.knight)
+		: base(CommandId.CombatReady, "전투 준비", 2, 1, 0, DirectionType.none, ClassType.knight)
 	{
-		description = "받는 피해를 한 번만 30% 감소시킵니다. 주는 피해를 한 번만 30% 증가시킵니다.";
+		description = "받는 피해를 한 번만 50% 감소시킵니다. 주는 피해를 한 번만 50% 증가시킵니다.";
 	}
 
 	public override IEnumerator Execute()
 	{
 		BattleLog("시전");
 
-		Buff takeDamageReduce = new Buff(BuffCategory.takeDamage, true, -0.3f);
+		Buff takeDamageReduce = new Buff(BuffCategory.takeDamage, true, -0.5f);
 		takeDamageReduce.SetCount(CountType.takeDamage, 1);
 
-		Buff dealDamageIncrease = new Buff(BuffCategory.dealDamage, true, +0.3f);
+		Buff dealDamageIncrease = new Buff(BuffCategory.dealDamage, true, +0.5f);
 		dealDamageIncrease.SetCount(CountType.dealDamage, 1);
 		var effect = GetEffect();
 		effect.transform.position = GetCommanderInfo().tr.position;
@@ -558,18 +565,206 @@ public class CombatReadyCommand : Command
 	}
 }
 
+#endregion
+
+#region 늑대인간 커맨드
+
 public class CuttingCommand : Command
 {
 	public CuttingCommand(Direction dir = Direction.right)
-		: base(CommandId.Cutting, "베기/할퀴기", 1, 10, 0, DirectionType.cross, ClassType.werewolf)
+		: base(CommandId.Cutting, "베기 / 할퀴기", 1, 3, 20, DirectionType.cross, ClassType.werewolf)
 	{
-		description = "적을 베어가릅니다. 늑대 상태에서는 전방의 적을 할퀴어 공격합니다.";
+		this.dir = dir;
+		description = "전방의 적을 베어가릅니다. 늑대 상태에서는 더 넓은 범위를 두 번 할퀴어 공격합니다.";
+		previewPos = ((2, 2), (3, 2));
 	}
 
 	public override IEnumerator Execute()
 	{
-		BattleLog("공격");
+		PlayerInfo player = GetCommanderInfo();
+		Grid grid = GetGrid();
+
+		if (player.transformCount.Equals(0))
+		{
+			BattleLog("베기");
+			List<(int x, int y)> attackArea = new List<(int x, int y)>() { (0, 1), (-1, 1), (1, 1) };
+			attackArea = CalculateArea(attackArea, player.Pos(), dir);
+			player.tr.LookAt(grid.PosToVec3(attackArea[0]));
+
+			// 수치조정
+			int damage = this.totalDamage;
+			SetAnimState(AnimState.cutting);
+			DisplayAttackRange(attackArea, 0.28f);
+			yield return new WaitForSeconds(0.33f);
+			if(CheckEnemyInArea(attackArea))
+			{
+				Hit(damage);
+			}
+			yield return new WaitForSeconds(0.6f);
+			SetAnimState(AnimState.idle);
+		}
+		else
+		{
+			BattleLog("할퀴기");
+			List<(int x, int y)> attackArea = new List<(int x, int y)>() { (0, 1), (-1, 1), (1, 1), (-1, 0), (1, 0) };
+			attackArea = CalculateArea(attackArea, player.Pos(), dir);
+			player.tr.LookAt(grid.PosToVec3(attackArea[0]));
+
+			// 수치조정
+			int damage = this.totalDamage;
+			SetAnimState(AnimState.scratch);
+			DisplayAttackRange(attackArea, 0.28f);
+			yield return new WaitForSeconds(0.33f);
+			if (CheckEnemyInArea(attackArea))
+			{
+				Hit(damage, true);
+			}
+			yield return new WaitForSeconds(0.19f);
+			if (CheckEnemyInArea(attackArea))
+			{
+				Hit(damage, true);
+			}
+			yield return new WaitForSeconds(0.4f);
+			SetAnimState(AnimState.idle);
+		}
 
 		yield break;
 	}
 }
+
+public class LeapAttackCommand : Command
+{
+	public LeapAttackCommand(Direction dir = Direction.right)
+		: base(CommandId.LeapAttack, "도약 공격", 2, 2, 30, DirectionType.all, ClassType.werewolf)
+	{
+		this.dir = dir;
+		description = "빠르게 도약하여 적을 공격합니다. 늑대 상태에서는 도약 거리가 증가합니다. 대각 방향으로도 사용이 가능합니다.";
+		previewPos = ((0, 2), (3, 2));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Grid grid = GetGrid();
+
+		if (player.transformCount.Equals(0))
+		{
+			BattleLog("1칸 도약");
+
+			List<(int x, int y)> attackArea = new List<(int x, int y)>() { (0,2) };
+			attackArea = CalculateArea(attackArea, player.Pos(), dir);
+			player.tr.LookAt(grid.PosToVec3(attackArea[0]));
+
+			(int x, int y) targetPos = (0, 1);
+			targetPos = grid.AddPos(grid.SwitchDir(targetPos, dir), player.Pos());
+			var targetPosVec = grid.PosToVec3(grid.ClampPos(targetPos));
+
+			// 수치조정
+			int damage = this.totalDamage;
+
+			SetAnimState(AnimState.leapAttack);
+			player.tr.DOMove(targetPosVec, 0.7f).SetEase(Ease.OutCirc);
+			yield return new WaitForSeconds(0.6f);
+			DisplayAttackRange(attackArea, 0.35f);
+			yield return new WaitForSeconds(0.4f);
+			if (CheckEnemyInArea(attackArea))
+			{
+				Hit(damage);
+			}
+			yield return new WaitForSeconds(0.37f);
+			SetAnimState(AnimState.idle);
+		}
+		else
+		{
+			BattleLog("2칸 도약");
+
+			List<(int x, int y)> attackArea = new List<(int x, int y)>() { (0, 3) };
+			attackArea = CalculateArea(attackArea, player.Pos(), dir);
+			player.tr.LookAt(grid.PosToVec3(attackArea[0]));
+
+			(int x, int y) targetPos = (0, 2);
+			targetPos = grid.AddPos(grid.SwitchDir(targetPos, dir), player.Pos());
+			var targetPosVec = grid.PosToVec3(grid.ClampPos(targetPos));
+
+			// 수치조정
+			int damage = this.totalDamage;
+
+			SetAnimState(AnimState.leapAttack);
+			player.tr.DOMove(targetPosVec, 0.7f).SetEase(Ease.OutCirc);
+			yield return new WaitForSeconds(0.6f);
+			DisplayAttackRange(attackArea, 0.35f);
+			yield return new WaitForSeconds(0.4f);
+			if (CheckEnemyInArea(attackArea))
+			{
+				Hit(damage);
+			}
+			yield return new WaitForSeconds(0.37f);
+			SetAnimState(AnimState.idle);
+		}
+
+		yield break;
+	}
+}
+
+public class InnerWildnessCommand : Command
+{
+	public InnerWildnessCommand(Direction dir = Direction.right)
+		: base(CommandId.InnerWildness, "내면의 야성 / 하울링", 1, 1, 0, DirectionType.none, ClassType.werewolf)
+	{
+		description = "스스로 20의 피해를 주고, 5초간 적에게 주는 피해량을 30% 증가시킵니다. 늑대 상태에서는 피해를 입지 않습니다.";
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Grid grid = GetGrid();
+
+		if (player.transformCount.Equals(0))
+		{
+			BattleLog("내면의 야성");
+
+			Buff dealDamageIncrease = new Buff(BuffCategory.dealDamage, true, +0.3f);
+			dealDamageIncrease.SetDuration(5f);
+			var effect = GetEffect();
+			effect.transform.position = GetCommanderInfo().tr.position;
+
+			// 수치 조정
+			SetAnimState(AnimState.innerWildness);
+			effect.Play();
+			yield return new WaitForSeconds(0.3f);
+			player.TakeDamage(20, 20);
+			yield return new WaitForSeconds(0.5f);
+			ApplyBuff(commander, dealDamageIncrease);
+			yield return new WaitForSeconds(0.15f);
+			SetAnimState(AnimState.idle);
+		}
+		else
+		{
+			BattleLog("하울링");
+
+			Buff dealDamageIncrease = new Buff(BuffCategory.dealDamage, true, +0.3f);
+			dealDamageIncrease.SetDuration(5f);
+			var effect = GetEffect();
+			effect.transform.position = GetCommanderInfo().tr.position;
+
+			// 수치 조정
+			SetAnimState(AnimState.innerWildness);
+			effect.Play();
+			yield return new WaitForSeconds(0.8f);
+			ApplyBuff(commander, dealDamageIncrease);
+			yield return new WaitForSeconds(0.15f);
+			SetAnimState(AnimState.idle);
+		}
+
+		yield break;
+	}
+}
+
+#endregion
+
+
+
+
+
+
+

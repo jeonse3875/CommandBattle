@@ -7,6 +7,11 @@ public class ClassSpecialize : MonoBehaviour
         DeTransform();
     }
 
+    public virtual void SetBaseStatus(PlayerInfo player)
+    {
+
+    }
+
     public virtual Buff[] GetPassive()
     {
         return null;
