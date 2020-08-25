@@ -10,8 +10,14 @@ using UnityEngine.UI;
 
 public class LobbyUI : MonoBehaviour
 {
+	public Image image_Blind;
+
 	public GameObject group_Loading;
 	public Text text_LoadingMessage;
+	public GameObject button_CancelMatchmaking;
+
+	public GameObject group_Error;
+	public Text text_ErrorMessage;
 
 	public GameObject group_Main;
 
@@ -226,6 +232,11 @@ public class LobbyUI : MonoBehaviour
 		BackendManager.instance.RequestMatchMaking(MatchType.Random, MatchModeType.OneOnOne);
 	}
 
+	public void Button_CancelMatchmaking()
+	{
+		BackendManager.instance.CancelMatchMaking();
+	}
+
 	public void Button_GoToItem()
 	{
 		group_Main.SetActive(false);
@@ -236,7 +247,9 @@ public class LobbyUI : MonoBehaviour
 	{
 		group_Main.SetActive(true);
 		group_Item.SetActive(false);
-		//UserInfo.instance.UploadCommandInfo();
+
+		if (UserInfo.instance.isUpdatedCommandData)
+			UserInfo.instance.UploadCommandInfo();
 	}
 
 	public void Button_CommandList()
@@ -282,6 +295,11 @@ public class LobbyUI : MonoBehaviour
 		particle.Clear();
 
 		ResetPreview();
+	}
+
+	public void Button_CloseError()
+	{
+		group_Error.SetActive(false);
 	}
 
 	private void InitializeCommandInfoUI()
@@ -439,6 +457,8 @@ public class LobbyUI : MonoBehaviour
 	{
 		group_Loading.SetActive(state);
 		string loadingMessage = "";
+		button_CancelMatchmaking.SetActive(false);
+
 		switch (what)
 		{
 			case ForWhat.joinMatchingServer:
@@ -446,6 +466,7 @@ public class LobbyUI : MonoBehaviour
 				break;
 			case ForWhat.matchMaking:
 				loadingMessage = "상대를 찾는 중...";
+				button_CancelMatchmaking.SetActive(true);
 				break;
 			case ForWhat.joinGameServer:
 				loadingMessage = "게임서버 접속 중...";
@@ -460,11 +481,23 @@ public class LobbyUI : MonoBehaviour
 	private void GetError(string message, ForWhat what)
 	{
 		Debug.Log(what.ToString() + " 에러: " + message);
+		group_Error.SetActive(true);
+		text_ErrorMessage.text = message;
 	}
 
 	private void GoToInGameScene()
 	{
 		UserInfo.instance.RemoveAllHandler();
+		StartCoroutine(LoadGameSceneAsync());
+	}
+
+	private IEnumerator LoadGameSceneAsync()
+	{
+		Loading(false, ForWhat.none);
+		image_Blind.gameObject.SetActive(true);
+		image_Blind.DOFade(1f, 1f);
+		yield return new WaitForSeconds(1f);
+
 		SceneManager.LoadScene("InGame");
 	}
 }

@@ -156,5 +156,6 @@ public class PlayerInfo
 public enum AnimState
 {
 	idle = 0, run = 1, earthStrike = 2, death = 3, whirlStrike = 4, stiff = 5, guard = 6,
-	combatReady = 7, cutting = 8, scratch = 9, leapAttack = 10, innerWildness = 11
+	combatReady = 7, cutting = 8, scratch = 9, leapAttack = 10, innerWildness = 11,
+	winner = 12
 }

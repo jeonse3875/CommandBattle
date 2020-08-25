@@ -9,7 +9,7 @@ using System.Text;
 
 public enum ForWhat
 {
-	autoLogin, login, logout, signOut, createNickname, updateNickname, checkNicknameAvailable, checkNicknameExist,
+	none, autoLogin, login, logout, signOut, createNickname, updateNickname, checkNicknameAvailable, checkNicknameExist,
 	joinMatchingServer, leaveMatchingServer, matchMaking, joinGameServer, joinGameRoom
 }
 
@@ -218,6 +218,24 @@ public class BackendManager : MonoBehaviour
 			else
 			{
 				Debug.Log("로그인 실패: " + saveTokenBRO.ToString());
+				string message = "";
+				switch (saveTokenBRO.GetStatusCode())
+				{
+					case "409":
+						message = "회원가입 실패.\n중복된 아이디가 존재합니다.";
+						break;
+					case "401":
+						message = "로그인 실패.\n아이디 또는 비밀번호가 틀렸습니다.";
+						break;
+					case "403":
+						message = "접속이 차단되었습니다.\n차단 사유 : " + saveTokenBRO.GetErrorCode();
+						break;
+					default:
+						message = "알 수 없는 오류";
+						break;
+				}
+				if (ErrorEvent != null)
+					ErrorEvent(message, ForWhat.login);
 			}
 
 			if (CustomLoginEvent != null)
@@ -246,6 +264,24 @@ public class BackendManager : MonoBehaviour
 			else
 			{
 				Debug.Log("자동 로그인 실패: " + saveToken.ToString());
+				string message = "";
+				switch (saveToken.GetStatusCode())
+				{
+					case "410":
+						message = "자동 로그인 기간 만료";
+						break;
+					case "401":
+						message = "자동 로그인 실패.\n다른 기기에서 접속한 기록이 있어 자동 로그인이 해제 되었습니다.";
+						break;
+					case "403":
+						message = "접속이 차단되었습니다.\n차단 사유 : " + saveToken.GetErrorCode();
+						break;
+					default:
+						message = "알 수 없는 오류";
+						break;
+				}
+				if (ErrorEvent != null)
+					ErrorEvent(message, ForWhat.autoLogin);
 			}
 
 			if (AutoLoginEvent != null)
@@ -275,6 +311,21 @@ public class BackendManager : MonoBehaviour
 			else
 			{
 				Debug.Log("닉네임 생성 실패: " + callback.ToString());
+				string message = "";
+				switch (callback.GetStatusCode())
+				{
+					case "400":
+						message = "닉네임 생성 실패.\n잘못된 닉네임입니다. 닉네임 앞뒤에 공백이 포함되어있는지 확인해보세요.";
+						break;
+					case "409":
+						message = "이미 사용 중인 닉네임입니다. 다른 닉네임으로 다시 시도해주세요.";
+						break;
+					default:
+						message = "알 수 없는 오류";
+						break;
+				}
+				if (ErrorEvent != null)
+					ErrorEvent(message, ForWhat.createNickname);
 			}
 
 			if (CreateNicknameEvent != null)
@@ -298,7 +349,21 @@ public class BackendManager : MonoBehaviour
 			}
 			else
 			{
-				Debug.Log("닉네임 수정 실패: " + callback.ToString());
+				string message = "";
+				switch (callback.GetStatusCode())
+				{
+					case "400":
+						message = "닉네임 수정 실패.\n잘못된 닉네임입니다. 닉네임 앞뒤에 공백이 포함되어있는지 확인해보세요.";
+						break;
+					case "409":
+						message = "이미 사용 중인 닉네임입니다. 다른 닉네임으로 다시 시도해주세요.";
+						break;
+					default:
+						message = "알 수 없는 오류";
+						break;
+				}
+				if (ErrorEvent != null)
+					ErrorEvent(message, ForWhat.updateNickname);
 			}
 
 			if (UpdateNicknameEvent != null)
@@ -323,6 +388,21 @@ public class BackendManager : MonoBehaviour
 			else
 			{
 				Debug.Log("닉네임 사용 불가: " + callback.ToString());
+				string message = "";
+				switch (callback.GetStatusCode())
+				{
+					case "400":
+						message = "잘못된 닉네임입니다. 닉네임 앞뒤에 공백이 포함되어있는지 확인해보세요.";
+						break;
+					case "409":
+						message = "이미 사용 중인 닉네임입니다.";
+						break;
+					default:
+						message = "알 수 없는 오류";
+						break;
+				}
+				if (ErrorEvent != null)
+					ErrorEvent(message, ForWhat.checkNicknameAvailable);
 			}
 
 			if (CheckNicknameAvailableEvent != null)
@@ -429,7 +509,8 @@ public class BackendManager : MonoBehaviour
 			}
 			else
 			{
-				Debug.Log("매칭서버 소켓연결 실패: " + errorInfo.Reason);
+				if (ErrorEvent != null)
+					ErrorEvent("매칭서버 접속 실패.\nReason : " + errorInfo.Reason,ForWhat.joinMatchingServer);
 			}
 		}
 	}
@@ -473,7 +554,7 @@ public class BackendManager : MonoBehaviour
 			if (!isSuccess)
 			{
 				if (ErrorEvent != null)
-					ErrorEvent(message, ForWhat.joinMatchingServer);
+					ErrorEvent("매칭서버 접속 실패.\nReason : " + args.ErrInfo.Reason, ForWhat.joinMatchingServer);
 			}
 		};
 
@@ -535,7 +616,8 @@ public class BackendManager : MonoBehaviour
 
 		Backend.Match.OnException += (Exception e) =>
 		{
-			Debug.Log("예외: " + e.Message);
+			if (ErrorEvent != null)
+				ErrorEvent("Exception : " + e.Message, ForWhat.joinMatchingServer);
 		};
 	}
 
@@ -559,7 +641,8 @@ public class BackendManager : MonoBehaviour
 			}
 			else
 			{
-				Debug.Log("인게임서버 소켓연결 실패: " + errorInfo.Reason);
+				if (ErrorEvent != null)
+					ErrorEvent("게임서버 접속 실패.\nReason : " + errorInfo.Reason, ForWhat.joinGameServer);
 			}
 		}
 	}
@@ -650,7 +733,8 @@ public class BackendManager : MonoBehaviour
 
 		Backend.Match.OnException += (Exception e) =>
 		{
-			Debug.Log("예외: " + e.Message);
+			if (ErrorEvent != null)
+				ErrorEvent("Exception : " + e.Message, ForWhat.joinGameServer);
 		};
 	}
 

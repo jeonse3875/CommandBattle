@@ -1,16 +1,34 @@
-﻿using System.Collections.Generic;
+﻿using DG.Tweening;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class InGameUI : MonoBehaviour
 {
+	public Image image_Blind;
+
+	public GameObject group_ChangePhase;
+	public Image image_LightBackground;
+	public Image image_Light;
+
 	public CommandSet playerCommandSet;
+
+	public GameObject group_Introduce;
+	public Text text_Nickname;
+	public Image image_ClassIcon;
+	public Text text_ClassName;
+
+	public GameObject group_CommandUI;
 
 	public GameObject group_DirUI;
 
 	public GameObject group_WaitOpponent;
 
 	public GameObject group_BattleTap;
+
+	public GameObject group_MatchResult;
+	public Text text_WinOrLose;
 
 	public Command currentCommand;
 
@@ -31,11 +49,11 @@ public class InGameUI : MonoBehaviour
 	public Text text_Nickname_P1;
 	public Text text_Nickname_P2;
 	public Slider slider_HP_P1;
+	public Image image_HPBar_P1;
 	public Slider slider_HP_P2;
+	public Image image_HPBar_P2;
 	public Text text_HP_P1;
 	public Text text_HP_P2;
-
-	public GameObject youArrow;
 
 	public GameObject logBlock;
 	public Transform logParentTr_P1;
@@ -43,6 +61,9 @@ public class InGameUI : MonoBehaviour
 	public ResourcePanel resourcePanel_P1;
 	public ResourcePanel resourcePanel_P2;
 	private List<GameObject> logList = new List<GameObject>();
+
+	public GameObject button_ViewLastBattle;
+	public GameObject button_BackToCommandUI;
 
 	private void Update()
 	{
@@ -57,6 +78,36 @@ public class InGameUI : MonoBehaviour
 					Button_CompleteCommand();
 			}
 		}
+	}
+
+	public float DoFadeOut()
+	{
+		float fadeTime = 1f;
+		image_Blind.gameObject.SetActive(true);
+		image_Blind.DOFade(0f, fadeTime).OnComplete(() =>
+		{
+			image_Blind.gameObject.SetActive(false);
+		});
+
+		return fadeTime;
+	}
+
+	public void StartMakingCommand()
+	{
+		SetActiveCommandUI();
+		Invoke("StartTimer", 2f);
+		LightEffect();
+	}
+
+	public void LightEffect()
+	{
+		group_ChangePhase.SetActive(true);
+		DOTween.Sequence()
+			.Append(image_Light.transform.DOScale(1f, 0.5f).SetEase(Ease.OutCirc))
+			.Join(image_LightBackground.DOFade(0.2f, 0.5f).SetEase(Ease.OutCirc))
+			.Insert(2f, image_Light.transform.DOScale(0.1f, 0.15f))
+			.Join(image_LightBackground.DOFade(0f, 0.15f))
+			.OnComplete(() => { group_ChangePhase.SetActive(false); });
 	}
 
 	public void InitializeGame()
@@ -78,17 +129,54 @@ public class InGameUI : MonoBehaviour
 		resourcePanel_P1.SetPanel(InGame.instance.playingCType[Who.p1]);
 		resourcePanel_P2.SetPanel(InGame.instance.playingCType[Who.p2]);
 
-		Instantiate(youArrow, InGame.instance.playerInfo[InGame.instance.me].tr.position, Quaternion.identity);
+		button_ViewLastBattle.SetActive(false);
+		button_BackToCommandUI.SetActive(false);
+
+		IntroducePlayer(Who.none);
+	}
+
+	public void IntroducePlayer(Who who)
+	{
+		group_Introduce.SetActive(true);
+
+		if(who.Equals(Who.none))
+		{
+			image_ClassIcon.gameObject.SetActive(false);
+			text_ClassName.text = "";
+			text_Nickname.text = "";
+			return;
+		}
+
+		image_ClassIcon.gameObject.SetActive(true);
+
+		if (InGame.instance.me.Equals(who))
+			text_Nickname.text = InGame.instance.playerNickname;
+		else
+			text_Nickname.text = InGame.instance.opponentNickname;
+				
+		text_ClassName.text = Command.GetKoreanClassName(InGame.instance.playingCType[who]);
+		image_ClassIcon.sprite = Command.GetClassIcon(InGame.instance.playingCType[who]);
 	}
 
 	public void InitializeVariable()
 	{
+		group_Introduce.SetActive(false);
 		playerCommandSet = new CommandSet();
 		UpdateCapacity();
 		InitializeCommandButton();
 		UpdateCommandButton();
 		isCompleted = false;
+
+		button_ViewLastBattle.SetActive(InGame.instance.canViewLastBattle);
+		button_BackToCommandUI.SetActive(true);
+	}
+
+	public void StartBattle()
+	{
 		ClearBattleLog();
+		StopTimer();
+		SetActiveBattleTapUI();
+		LightEffect();
 	}
 
 	public void Button_AddCommand(int num)
@@ -104,6 +192,11 @@ public class InGameUI : MonoBehaviour
 		}
 		UpdateCapacity();
 		UpdateCommandButton();
+	}
+
+	public void Button_ViewLastBattle(bool status)
+	{
+		group_BattleTap.SetActive(status);
 	}
 
 	public void Button_CompleteCommand()
@@ -143,6 +236,12 @@ public class InGameUI : MonoBehaviour
 		UpdateCommandButton();
 	}
 
+	public void Button_ExitGame()
+	{
+		Debug.Log("게임을 종료하고 로비로 나갑니다.");
+		SceneManager.LoadScene("Lobby");
+	}
+
 	private void UpdateCapacity()
 	{
 		int total = playerCommandSet.GetTotalTime();
@@ -154,14 +253,26 @@ public class InGameUI : MonoBehaviour
 	{
 		int max = InGame.instance.playerInfo[who].maxHP;
 		int cur = InGame.instance.playerInfo[who].hp;
+		float value = cur / (float)max;
+
+		Color color;
+		if (value > 0.5f)
+			ColorUtility.TryParseHtmlString("#06BD5D", out color);
+		else if (value > 0.25f)
+			ColorUtility.TryParseHtmlString("#FFB700", out color);
+		else
+			ColorUtility.TryParseHtmlString("#F13242", out color);
+
 		if (who.Equals(Who.p1))
 		{
-			slider_HP_P1.value = cur / (float)max;
+			slider_HP_P1.value = value;
+			image_HPBar_P1.color = color;
 			text_HP_P1.text = string.Format("{0} / {1}", cur.ToString(), max.ToString());
 		}
 		else
 		{
-			slider_HP_P2.value = cur / (float)max;
+			slider_HP_P2.value = value;
+			image_HPBar_P2.color = color;
 			text_HP_P2.text = string.Format("{0} / {1}", cur.ToString(), max.ToString());
 		}
 	}
@@ -242,6 +353,7 @@ public class InGameUI : MonoBehaviour
 
 	public void SetActiveCommandUI()
 	{
+		group_CommandUI.SetActive(true);
 		group_WaitOpponent.SetActive(false);
 		group_BattleTap.SetActive(false);
 	}
@@ -254,6 +366,7 @@ public class InGameUI : MonoBehaviour
 
 	public void SetActiveBattleTapUI()
 	{
+		group_CommandUI.SetActive(false);
 		group_WaitOpponent.SetActive(false);
 		group_BattleTap.SetActive(true);
 	}
@@ -286,8 +399,28 @@ public class InGameUI : MonoBehaviour
 
 	public void ClearBattleLog()
 	{
+		button_BackToCommandUI.SetActive(false);
 		foreach(var log in logList)
 			Destroy(log);
 		logList.Clear();
+	}
+
+	public void SetMatchResultUI(bool win)
+	{
+		group_MatchResult.SetActive(true);
+
+		if(win)
+		{
+			text_WinOrLose.text = "승리";
+			group_ChangePhase.SetActive(true);
+			image_LightBackground.gameObject.SetActive(false);
+			image_Light.transform.DOScale(1f, 0.5f).SetEase(Ease.OutCirc);
+		}
+		else
+		{
+			text_WinOrLose.text = "패배";
+			group_ChangePhase.SetActive(true);
+			image_LightBackground.DOFade(0.5f, 3f);
+		}
 	}
 }

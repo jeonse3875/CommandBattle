@@ -20,6 +20,11 @@ public class GameManager : MonoBehaviour
 		Screen.SetResolution(576, 1024, false);
 		Application.targetFrameRate = 60;
 #endif
+
+#if UNITY_ANDROID
+		Application.targetFrameRate = 60;
+		Screen.sleepTimeout = SleepTimeout.NeverSleep;
+#endif
 	}
 
 

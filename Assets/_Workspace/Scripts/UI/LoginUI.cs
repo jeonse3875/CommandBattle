@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
@@ -20,6 +18,9 @@ public class LoginUI : MonoBehaviour
 	public GameObject group_Loading;
 	public Text text_LoadingMessage;
 
+	public GameObject group_Error;
+	public Text text_ErrorMessage;
+
 	private void Start()
 	{
 		AddHandler();
@@ -37,6 +38,7 @@ public class LoginUI : MonoBehaviour
 		BackendManager.instance.NicknameExistEvent += LoadLobbyScene;
 		BackendManager.instance.CreateNicknameEvent += OnCreateNickname;
 		BackendManager.instance.LoadingEvent += Loading;
+		BackendManager.instance.ErrorEvent += GotError;
 	}
 
 	private void RemoveHandler()
@@ -45,6 +47,7 @@ public class LoginUI : MonoBehaviour
 		BackendManager.instance.NicknameExistEvent -= LoadLobbyScene;
 		BackendManager.instance.CreateNicknameEvent -= OnCreateNickname;
 		BackendManager.instance.LoadingEvent -= Loading;
+		BackendManager.instance.ErrorEvent -= GotError;
 	}
 
 	public void Button_Login()
@@ -81,6 +84,11 @@ public class LoginUI : MonoBehaviour
 		group_SignUp.SetActive(false);
 	}
 
+	public void Button_CloseError()
+	{
+		group_Error.SetActive(false);
+	}
+
 	private void GoToSetNickname()
 	{
 		group_Login.SetActive(false);
@@ -90,7 +98,8 @@ public class LoginUI : MonoBehaviour
 
 	private void LoadLobbyScene()
 	{
-		SceneManager.LoadScene("Lobby");
+		Loading(true, ForWhat.none);
+		SceneManager.LoadSceneAsync("Lobby");
 	}
 
 	private void OnCreateNickname(bool isSuccess, string statusCode, string message)
@@ -119,5 +128,11 @@ public class LoginUI : MonoBehaviour
 				break;
 		}
 		text_LoadingMessage.text = loadingMessage;
+	}
+
+	private void GotError(string msg, ForWhat what)
+	{
+		group_Error.SetActive(true);
+		text_ErrorMessage.text = msg;
 	}
 }

@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 public class CommandButton : MonoBehaviour
@@ -10,6 +8,14 @@ public class CommandButton : MonoBehaviour
     public Image image_CommandIcon;
     public Text text_Time;
     public Text text_Left;
+
+    public GameObject group_MoreInfo;
+    public Text text_CommandName;
+    public Text text_Description;
+    public Text text_Damage;
+
+    private bool isTouching = false;
+    private float touchingTime = 0f;
 
     public void InitializeButton(CommandId id)
     {
@@ -22,10 +28,35 @@ public class CommandButton : MonoBehaviour
             text_Left.text = "X " + command.limit.ToString();
 
         text_Time.text = command.time.ToString();
+
+        text_CommandName.text = command.name;
+        text_Damage.text = command.totalDamage.ToString();
+        if (command.totalDamage.Equals(0))
+            text_Damage.text = "-";
+        text_Description.text = command.description;
     }
 
     public void SetUnuseButton()
     {
         gameObject.SetActive(false);
+    }
+
+    private void Update()
+    {
+        if(isTouching)
+        {
+            touchingTime += Time.deltaTime;
+        }
+        else
+        {
+            touchingTime = 0f;
+        }
+
+        group_MoreInfo.SetActive(touchingTime > 0.4f);
+    }
+
+    public void SetMoreInfo(bool status)
+    {
+        isTouching = status;
     }
 }

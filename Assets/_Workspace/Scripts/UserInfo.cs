@@ -25,7 +25,7 @@ public class UserInfo : MonoBehaviour
 
 	public ClassType playingClass;
 
-	private bool isUpdatedCommandData = false;
+	public bool isUpdatedCommandData = false;
 
 	private void Awake()
 	{
@@ -55,6 +55,15 @@ public class UserInfo : MonoBehaviour
 	{
 		if(isUpdatedCommandData)
 			UploadCommandInfo();
+	}
+
+	private void OnApplicationPause(bool pause)
+	{
+		if (pause)
+		{
+			if (isUpdatedCommandData)
+				UploadCommandInfo();
+		}
 	}
 
 	public void AddHandler()

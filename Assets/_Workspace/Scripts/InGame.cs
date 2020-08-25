@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public enum Who
 {
@@ -11,6 +10,7 @@ public enum Who
 
 public class InGame : MonoBehaviour
 {
+
 	public static InGame instance;
 	public InGameUI inGameUI;
 
@@ -46,6 +46,8 @@ public class InGame : MonoBehaviour
 	public Dictionary<Who, BuffSet> buffSet = new Dictionary<Who, BuffSet>();
 
 	public InGameCamera cam;
+
+	public bool canViewLastBattle = false;
 
 	#region LifeCycle
 	private void Start()
@@ -83,13 +85,13 @@ public class InGame : MonoBehaviour
 	private void AddHandler()
 	{
 		BackendManager.instance.GetMsgEvent += GetMessage;
-		BackendManager.instance.GameEndEvent += ExitGame;
+		//BackendManager.instance.GameEndEvent += ExitGame;
 	}
 
 	private void RemoveHandler()
 	{
 		BackendManager.instance.GetMsgEvent -= GetMessage;
-		BackendManager.instance.GameEndEvent -= ExitGame;
+		//BackendManager.instance.GameEndEvent -= ExitGame;
 	}
 	#endregion
 
@@ -99,11 +101,36 @@ public class InGame : MonoBehaviour
 		var waitGameStart = new WaitUntil(IsGameStart);
 		var waitCommandComplete = new WaitUntil(IsCommandComplete);
 		var waitBattleEnd = new WaitUntil(IsBattleEnd);
+		var waitIntroduce = new WaitForSeconds(2f);
 
+		if (BackendManager.instance.isP1)
+			me = Who.p1;
+		else
+			me = Who.p2;
+
+		inGameUI.image_Blind.gameObject.SetActive(true);
 		BackendManager.instance.SendData(new GameStartMsg());
 		yield return waitGameStart;
-
+		BackendManager.instance.SendData(new GameStartMsg());
 		InitializeGame();
+
+		yield return new WaitForSeconds(inGameUI.DoFadeOut());
+
+		// P1 소개
+		yield return new WaitForSeconds(cam.ZoomInTarget(playerInfo[Who.p1].tr.position));
+		inGameUI.IntroducePlayer(Who.p1);
+		yield return waitIntroduce;
+		inGameUI.IntroducePlayer(Who.none);
+
+		// P2 소개
+		yield return new WaitForSeconds(cam.ZoomInTarget(playerInfo[Who.p2].tr.position));
+		inGameUI.IntroducePlayer(Who.p2);
+		yield return waitIntroduce;
+		inGameUI.IntroducePlayer(Who.none);
+
+		// 게임 시작
+		yield return new WaitForSeconds(cam.ZoomOut());
+
 		while (!isGameEnd)
 		{
 			InitializeVariable();
@@ -113,16 +140,13 @@ public class InGame : MonoBehaviour
 			yield return waitBattleEnd;
 			CheckGameEnd();
 		}
-		EndGame();
+		yield return StartCoroutine(EndGame());
 	}
 
 	private void InitializeGame()
 	{
 		Debug.Log("게임 초기화");
-		if (BackendManager.instance.isP1)
-			me = Who.p1;
-		else
-			me = Who.p2;
+
 		grid = new Grid(5, 5, 5f, new Vector3(-10, 0, -10));
 		playerNickname = BackendManager.instance.GetMyNickname();
 		opponentNickname = BackendManager.instance.GetOpponentNickname();
@@ -175,8 +199,7 @@ public class InGame : MonoBehaviour
 	private void StartMakingCommand()
 	{
 		Debug.Log("커맨드 만들기 시작");
-		inGameUI.SetActiveCommandUI();
-		inGameUI.StartTimer();
+		inGameUI.StartMakingCommand();
 	}
 
 	private bool IsGameStart()
@@ -194,14 +217,16 @@ public class InGame : MonoBehaviour
 
 	private void StartBattle()
 	{
-		inGameUI.StopTimer();
+		inGameUI.StartBattle();
 		Debug.Log("배틀 시작");
-		inGameUI.SetActiveBattleTapUI();
+		canViewLastBattle = true;
 		StartCoroutine(BattleRoutine());
 	}
 
 	private IEnumerator BattleRoutine()
 	{
+		yield return new WaitForSeconds(2.5f);
+
 		for (int currentTime = 0; currentTime < 10; currentTime++)
 		{
 			Debug.Log(string.Format("[{0}/10]", (currentTime + 1).ToString()));
@@ -229,13 +254,15 @@ public class InGame : MonoBehaviour
 		yield return StartCoroutine(WerewolfTransform(Who.p1));
 		yield return StartCoroutine(WerewolfTransform(Who.p2));
 
+
 		BackendManager.instance.SendData(new BattleEndMsg());
+		yield return new WaitForSeconds(2f);
 	}
 
 	private IEnumerator WerewolfTransform(Who who)
 	{
 		bool canTransform = playingCType[who].Equals(ClassType.werewolf)
-			&& playerInfo[who].Resource >= 3 && playerInfo[who].transformCount.Equals(0);
+			&& playerInfo[who].Resource >= 3 && playerInfo[who].transformCount.Equals(0) && playerInfo[who].hp > 0;
 
 		if (!canTransform)
 			yield break;
@@ -263,7 +290,7 @@ public class InGame : MonoBehaviour
 			isGameEnd = true;
 	}
 
-	private void EndGame()
+	private IEnumerator EndGame()
 	{
 		Debug.Log("게임 종료");
 
@@ -280,21 +307,19 @@ public class InGame : MonoBehaviour
 		result.m_winners.Add(sessionId[winner]);
 		result.m_losers.Add(sessionId[loser]);
 		BackendManager.instance.GameEnd(result);
+		playerInfo[winner].tr.LookAt(grid.PosToVec3((2, -1)));
+		playerInfo[winner].SetAnimState(AnimState.winner);
+		yield return new WaitForSeconds(cam.ZoomInTarget(playerInfo[me].tr.position));
+		inGameUI.SetMatchResultUI(winner.Equals(me));
 	}
-	#endregion
 
-	private void ExitGame()
-	{
-		Debug.Log("게임을 종료하고 로비로 나갑니다.");
-		SceneManager.LoadScene("Lobby");
-	}
+	#endregion
 
 	private void GetMessage(string json)
 	{
 		Debug.Log("데이터 수신 : " + json);
 
 		Msg tempMsg = JsonUtility.FromJson<Msg>(json);
-		Debug.Log(tempMsg.type.ToString());
 		switch (tempMsg.type)
 		{
 			case Msg.MsgType.gameStart:
