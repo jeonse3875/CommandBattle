@@ -262,7 +262,7 @@ public class InGame : MonoBehaviour
 	private IEnumerator WerewolfTransform(Who who)
 	{
 		bool canTransform = playingCType[who].Equals(ClassType.werewolf)
-			&& playerInfo[who].Resource >= 3 && playerInfo[who].transformCount.Equals(0) && playerInfo[who].hp > 0;
+			&& playerInfo[who].Resource >= 3 && playerInfo[who].transformCount.Equals(0) && playerInfo[who].HP > 0;
 
 		if (!canTransform)
 			yield break;
@@ -340,9 +340,13 @@ public class InGame : MonoBehaviour
 		}
 	}
 
-	public void StopCommand(Who who)
+	public void StopCommand(Who who, bool forceStop = false)
 	{
-		if (commandRoutine[who] != null)
+		if (commandRoutine[who] != null && !playerInfo[who].isUnstoppable)
+		{
+			StopCoroutine(commandRoutine[who]);
+		}
+		else if (commandRoutine[who] != null && forceStop)
 		{
 			StopCoroutine(commandRoutine[who]);
 		}

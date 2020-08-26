@@ -1,7 +1,6 @@
 ﻿using BackEnd;
 using LitJson;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -22,8 +21,10 @@ public class UserInfo : MonoBehaviour
 
 	public delegate void updateCommandInfoEventHandler(ClassType cType, CommandId id, bool isMounted);
 	public event updateCommandInfoEventHandler UpdateMountInfoEvent;
+	public delegate void userInfoErrorEventHandler(string message, ForWhat what);
+	public event userInfoErrorEventHandler UserInfoErrorEvent;
 
-	public ClassType playingClass;
+	public ClassType playingClass = ClassType.knight;
 
 	public bool isUpdatedCommandData = false;
 
@@ -38,7 +39,6 @@ public class UserInfo : MonoBehaviour
 			instance = this;
 			DontDestroyOnLoad(this);
 		}
-		playingClass = ClassType.knight; //Test
 	}
 
 	private void Start()
@@ -209,12 +209,14 @@ public class UserInfo : MonoBehaviour
 		
 		if (mountedCommands[type].Count + 1 > 8)
 		{
-			Debug.Log("더이상 커맨드를 장착할 수 없습니다.");
+			if (UserInfoErrorEvent != null)
+				UserInfoErrorEvent("더이상 커맨드를 장착할 수 없습니다. (최대 8개)", ForWhat.none);
 			return false;
 		}
 		else if (mountedCommands[type].Contains(id))
 		{
-			Debug.Log("이미 장착한 커맨드입니다.");
+			if (UserInfoErrorEvent != null)
+				UserInfoErrorEvent(string.Format("이미 장착한 커맨드입니다."), ForWhat.none);
 			return false;
 		}
 		else
@@ -241,7 +243,8 @@ public class UserInfo : MonoBehaviour
 		}
 		else
 		{
-			Debug.Log("장착하지 않은 커맨드입니다.");
+			if (UserInfoErrorEvent != null)
+				UserInfoErrorEvent("장착하지 않은 커맨드입니다.", ForWhat.none);
 			return false;
 		}
 	}

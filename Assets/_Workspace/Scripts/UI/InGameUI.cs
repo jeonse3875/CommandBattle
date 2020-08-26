@@ -252,7 +252,7 @@ public class InGameUI : MonoBehaviour
 	public void UpdateHealth(Who who)
 	{
 		int max = InGame.instance.playerInfo[who].maxHP;
-		int cur = InGame.instance.playerInfo[who].hp;
+		int cur = InGame.instance.playerInfo[who].HP;
 		float value = cur / (float)max;
 
 		Color color;

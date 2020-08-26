@@ -51,6 +51,11 @@ public class DamageTMP : MonoBehaviour
 			targetSize = 1.8f;
 			popTime = 0.15f;
 		}
+		else if (mode.Equals(-2))
+		{
+			ColorUtility.TryParseHtmlString("#04BB5A", out Color color);
+			tMP.color = color;
+		}
 
 		// position
 		Ease ease = Ease.Unset;

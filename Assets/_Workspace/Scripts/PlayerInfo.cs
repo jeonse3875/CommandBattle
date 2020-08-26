@@ -11,7 +11,12 @@ public class PlayerInfo
 	public int x;
 	public int y;
 	public int maxHP;
-	public int hp;
+	private int hp;
+	public int HP
+	{
+		get { return hp; }
+		set { hp = Mathf.Clamp(value, 0, maxHP); }
+	}
 	public (int min, int max) resourceClamp;
 	private int resource;
 
@@ -32,6 +37,7 @@ public class PlayerInfo
 	public bool canAct = true;
 	public bool isDead = false;
 	public int transformCount = 0;
+	public bool isUnstoppable = false;
 
 	public PlayerInfo(Who who, (int x, int y) pos, Transform tr)
 	{
@@ -76,7 +82,7 @@ public class PlayerInfo
 		y = pos.y;
 	}
 
-	public void TakeDamage(int damage, int originDamage, bool isMultiple = false)
+	public int TakeDamage(int damage, int originDamage, bool isMultiple = false)
 	{
 		int takenDamage = Mathf.RoundToInt(damage * takeDamageMultiplier);
 		int mode;
@@ -94,7 +100,7 @@ public class PlayerInfo
 		}
 		else
 		{
-			hp = Mathf.Clamp(hp - takenDamage, 0, maxHP);
+			HP -= takenDamage;
 			InGame.instance.buffSet[me].UpdateCount(CountType.takeDamage, -1);
 			Debug.Log(string.Format("'{0}'이 {1}의 피해를 입음", me.ToString(), takenDamage.ToString()));
 			InGame.instance.InstantiateDamageTMP(tr, takenDamage.ToString(), mode, isMultiple);
@@ -102,32 +108,52 @@ public class PlayerInfo
 
 			Resource += resourceByTakeDamage;
 
-			if (hp <= 0)
+			if (HP <= 0)
 			{
 				Debug.Log(string.Format("'{0}' 죽음", me.ToString()));
 				isDead = true;
 				InGame.instance.deadPlayerList.Add(me);
-				InGame.instance.StopCommand(me);
+				InGame.instance.StopCommand(me, true);
 				animator.SetInteger("state", 3);
 			}
 		}
+
+		return takenDamage;
 	}
 
-	public void DealDamage(int originDamage, bool isMultiple = false)
+	public int DealDamage(int originDamage, bool isMultiple = false)
 	{
+		int realDamage;
 		if (isPreview)
 		{
-			lobby.pre_Enemy.TakeDamage(originDamage, originDamage, isMultiple);
+			realDamage = lobby.pre_Enemy.TakeDamage(originDamage, originDamage, isMultiple);
 		}
 		else
 		{
 			int damage = Mathf.RoundToInt(originDamage * dealDamageMultiplier);
 
-			InGame.instance.playerInfo[enemy].TakeDamage(damage, originDamage, isMultiple);
+			realDamage = InGame.instance.playerInfo[enemy].TakeDamage(damage, originDamage, isMultiple);
 			InGame.instance.buffSet[me].UpdateCount(CountType.dealDamage, -1);
 
 			Resource += resourceByDealDamage;
 		}
+
+		return realDamage;
+	}
+
+	public int Restore(int amount)
+	{
+		if(isPreview)
+		{
+			lobby.InstantiateDamageTMP(tr, amount.ToString(), -2);
+		}
+		else
+		{
+			InGame.instance.InstantiateDamageTMP(tr, amount.ToString(), -2);
+			HP += amount;
+		}
+
+		return amount;
 	}
 
 	public void LookEnemy()
@@ -157,5 +183,5 @@ public enum AnimState
 {
 	idle = 0, run = 1, earthStrike = 2, death = 3, whirlStrike = 4, stiff = 5, guard = 6,
 	combatReady = 7, cutting = 8, scratch = 9, leapAttack = 10, innerWildness = 11,
-	winner = 12
+	winner = 12, earthWave = 13, heartRip = 14, healPotion = 15, charge = 16
 }

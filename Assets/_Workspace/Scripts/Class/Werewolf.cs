@@ -22,7 +22,7 @@ public class Werewolf : ClassSpecialize
     public override void SetBaseStatus(PlayerInfo player)
     {
         player.maxHP = 200;
-        player.hp = 200;
+        player.HP = 200;
         player.resourceClamp = (0, 3);
         player.Resource = 0;
     }

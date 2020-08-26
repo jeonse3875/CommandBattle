@@ -65,9 +65,17 @@ public class Grid
 		return switchedList;
 	}
 
-	public (int x, int y) AddPos((int x, int y) pos1, (int x, int y) pos2)
+	public (int x, int y) AddPos((int x, int y) pos1, (int x, int y) pos2, bool isClamp = false)
 	{
-		return (pos1.x + pos2.x, pos1.y + pos2.y);
+		if (isClamp)
+			return ClampPos((pos1.x + pos2.x, pos1.y + pos2.y));
+		else
+			return (pos1.x + pos2.x, pos1.y + pos2.y);
+	}
+
+	public int DistancePos((int x, int y) pos1, (int x, int y) pos2)
+	{
+		return Mathf.Abs(pos1.x - pos2.x) + Mathf.Abs(pos1.y - pos2.y);
 	}
 
 	public (int x, int y) ClampPos((int x, int y) pos)

@@ -94,7 +94,7 @@ public class CommandSet
 	public int GetCommandCount(CommandId id)
 	{
 		int count = 0;
-		foreach(var command in commandList)
+		foreach (var command in commandList)
 		{
 			if (command.id.Equals(id))
 				count++;
@@ -103,19 +103,19 @@ public class CommandSet
 	}
 }
 
-public enum CommandId
-{
-	//공용
-	Empty, Move, Guard,
-	//기사
-	EarthStrike, WhirlStrike, CombatReady, 
-	//늑대인간
-	Cutting, LeapAttack, InnerWildness
-}
-
 public enum ClassType
 {
 	common, knight, werewolf
+}
+
+public enum CommandId
+{
+	//공용
+	Empty, Move, Guard, HealPotion,
+	//기사
+	EarthStrike, WhirlStrike, CombatReady, EarthWave, Charge,
+	//늑대인간
+	Cutting, LeapAttack, InnerWildness, HeartRip,
 }
 
 public class Command
@@ -226,11 +226,15 @@ public class Command
 		GetCommanderInfo().SetAnimState(state);
 	}
 
-	public ParticleSystem GetEffect()
+	public ParticleSystem GetEffect(int num = 0)
 	{
-		if(isPreview)
+		string effectName = id.ToString();
+		if (!num.Equals(0))
+			effectName += num.ToString();
+
+		if (isPreview)
 		{
-			Transform particleTr = pre_Particles.Find(id.ToString());
+			Transform particleTr = pre_Particles.Find(effectName);
 			if (particleTr != null)
 				return particleTr.GetComponent<ParticleSystem>();
 			else
@@ -238,13 +242,13 @@ public class Command
 		}
 		else
 		{
-			Transform particleTr = InGame.instance.particles[commander].Find(id.ToString());
+			Transform particleTr = InGame.instance.particles[commander].Find(effectName);
 			if (particleTr != null)
 				return particleTr.GetComponent<ParticleSystem>();
 			else
 				return InGame.instance.particles[commander].GetChild(0).GetComponent<ParticleSystem>();
 		}
-		
+
 	}
 
 	public static Command FromId(CommandId id, Direction dir = Direction.right)
@@ -344,15 +348,26 @@ public class Command
 		}
 	}
 
-	public void Hit(int damage, bool isMultiple = false)
+	public int Hit(int damage, bool isMultiple = false)
 	{
-		GetCommanderInfo().DealDamage(damage, isMultiple);
+		int realDamage = GetCommanderInfo().DealDamage(damage, isMultiple);
+		BattleLog(string.Format("{0}의 피해", realDamage.ToString()));
+		return realDamage;
 	}
 
-	public void Hit(int damage, Buff deBuff, bool isMultiple = false)
+	public int Hit(int damage, Buff deBuff, bool isMultiple = false)
 	{
-		GetCommanderInfo().DealDamage(damage, isMultiple);
 		ApplyBuff(Enemy(), deBuff);
+		int realDamage = GetCommanderInfo().DealDamage(damage, isMultiple);
+		BattleLog(string.Format("{0}의 피해", realDamage.ToString()));
+		return realDamage;
+	}
+
+	public int Restore(int amount)
+	{
+		int healAmount = GetCommanderInfo().Restore(amount);
+		BattleLog(string.Format("{0} 회복", healAmount.ToString()));
+		return healAmount;
 	}
 }
 
@@ -382,14 +397,12 @@ public class MoveCommand : Command
 		: base(CommandId.Move, "이동", 1, 10, 0, DirectionType.cross, ClassType.common)
 	{
 		this.dir = dir;
-		description = "한 칸 이동합니다.";
+		description = "전방으로 한 칸 이동합니다.";
 		previewPos = ((1, 2), (3, 2));
 	}
 
 	public override IEnumerator Execute()
 	{
-		BattleLog(string.Format("{0} 한 칸 이동.", Grid.DirToKorean(dir)));
-
 		PlayerInfo player = GetCommanderInfo();
 		PlayerInfo enemy = GetEnemyInfo();
 		Grid grid = GetGrid();
@@ -401,8 +414,12 @@ public class MoveCommand : Command
 
 		if (targetPos == curPos || targetPos == enemy.Pos())
 		{
-			Debug.Log("가로막힘");
+			BattleLog(string.Format("가로막힘", Grid.DirToKorean(dir)));
 			yield break;
+		}
+		else
+		{
+			BattleLog(string.Format("{0} 이동.", Grid.DirToKorean(dir)));
 		}
 
 		Vector3 startPosVec = tr.position;
@@ -430,7 +447,7 @@ public class GuardCommand : Command
 
 	public override IEnumerator Execute()
 	{
-		BattleLog("시전");
+		BattleLog("2초간 방어 강화");
 
 		Buff damageReduce = new Buff(BuffCategory.takeDamage, true, -0.5f);
 		damageReduce.SetDuration(2f);
@@ -443,6 +460,26 @@ public class GuardCommand : Command
 	}
 }
 
+public class HealPotionCommand : Command
+{
+	public HealPotionCommand(Direction dir = Direction.right)
+		: base(CommandId.HealPotion,"회복 포션",1,1,0,DirectionType.none,ClassType.common)
+	{
+		description = "비상용 회복 포션을 마셔 체력을 20 회복합니다.";
+	}
+
+	public override IEnumerator Execute()
+	{
+		SetAnimState(AnimState.healPotion);
+		GetCommanderInfo().specialize.HideWeapon(0.9f);
+		yield return new WaitForSeconds(0.66f);
+		Restore(20);
+		yield return new WaitForSeconds(0.3f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
+
 #endregion
 
 #region 기사 커맨드
@@ -450,7 +487,7 @@ public class GuardCommand : Command
 public class EarthStrikeCommand : Command
 {
 	public EarthStrikeCommand(Direction dir = Direction.right)
-		: base(CommandId.EarthStrike, "대지의 일격", 2, 2, 50, DirectionType.cross, ClassType.knight)
+		: base(CommandId.EarthStrike, "대지의 일격", 2, 2, 40, DirectionType.cross, ClassType.knight)
 	{
 		this.dir = dir;
 		description = "대지를 강타해 전방의 적에게 피해를 주고 경직시킵니다.";
@@ -459,7 +496,6 @@ public class EarthStrikeCommand : Command
 
 	public override IEnumerator Execute()
 	{
-		BattleLog(string.Format("{0} 공격.", Grid.DirToKorean(dir)));
 
 		PlayerInfo player = GetCommanderInfo();
 		Grid grid = GetGrid();
@@ -487,17 +523,16 @@ public class EarthStrikeCommand : Command
 			stiff.SetCount(CountType.instant);
 
 			Hit(damage, stiff);
-
-			BattleLog(string.Format("{0}의 피해를 주고 경직시킴.", damage.ToString()));
 		}
 		yield return new WaitForSeconds(0.4f);
 		SetAnimState(AnimState.idle);
 	}
 }
+
 public class WhirlStrikeCommand : Command
 {
 	public WhirlStrikeCommand(Direction dir = Direction.right)
-		: base(CommandId.WhirlStrike, "회오리 타격", 1, 3, 30, DirectionType.none, ClassType.knight)
+		: base(CommandId.WhirlStrike, "회오리 타격", 1, 3, 25, DirectionType.none, ClassType.knight)
 	{
 		description = "칼을 휘둘러 주변의 적을 공격합니다.";
 		previewPos = ((2, 2), (3, 2));
@@ -505,8 +540,6 @@ public class WhirlStrikeCommand : Command
 
 	public override IEnumerator Execute()
 	{
-		BattleLog("공격");
-
 		PlayerInfo player = GetCommanderInfo();
 		Grid grid = GetGrid();
 
@@ -526,12 +559,12 @@ public class WhirlStrikeCommand : Command
 		if (CheckEnemyInArea(attackArea))
 		{
 			Hit(damage);
-			BattleLog(string.Format("공격 적중. {0}의 피해", damage.ToString()));
 		}
 		yield return new WaitForSeconds(0.3f);
 		SetAnimState(AnimState.idle);
 	}
 }
+
 public class CombatReadyCommand : Command
 {
 	public CombatReadyCommand(Direction dir = Direction.right)
@@ -542,8 +575,6 @@ public class CombatReadyCommand : Command
 
 	public override IEnumerator Execute()
 	{
-		BattleLog("시전");
-
 		Buff takeDamageReduce = new Buff(BuffCategory.takeDamage, true, -0.5f);
 		takeDamageReduce.SetCount(CountType.takeDamage, 1);
 
@@ -558,6 +589,7 @@ public class CombatReadyCommand : Command
 		yield return new WaitForSeconds(0.8f);
 		ApplyBuff(commander, takeDamageReduce);
 		ApplyBuff(commander, dealDamageIncrease);
+		BattleLog("공격/방어 1회 강화");
 		yield return new WaitForSeconds(0.2f);
 		SetAnimState(AnimState.idle);
 
@@ -565,6 +597,130 @@ public class CombatReadyCommand : Command
 	}
 }
 
+public class EarthWaveCommand : Command
+{
+	public EarthWaveCommand(Direction dir = Direction.right)
+		: base(CommandId.EarthWave, "대지 파동", 4, 1, 60, DirectionType.none, ClassType.knight)
+	{
+		description = "지면에 파동을 일으켜 사방의 적을 공격합니다. 피해를 입은 적은 경직 상태가 됩니다.";
+		previewPos = ((2, 2), (4, 0));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Grid grid = GetGrid();
+
+		List<(int x, int y)> attackArea1 = new List<(int x, int y)> { (-1, 1), (1, 1), (-1, -1), (1, -1) };
+		List<(int x, int y)> attackArea2 = new List<(int x, int y)> { (-2, 2), (2, 2), (-2, -2), (2, -2) };
+		attackArea1 = CalculateArea(attackArea1, player.Pos());
+		attackArea2 = CalculateArea(attackArea2, player.Pos());
+
+		ParticleSystem effect1 = GetEffect(1);
+		effect1.transform.position = grid.PosToVec3(player.Pos());
+		ParticleSystem effect2 = GetEffect(2);
+		effect1.transform.position = grid.PosToVec3(player.Pos());
+		Buff stiff = new Buff(BuffCategory.stiff, false);
+		stiff.SetCount(CountType.instant);
+
+		// 수치조정
+		int damage = this.totalDamage;
+		SetAnimState(AnimState.earthWave);
+		DisplayAttackRange(attackArea1, 0.63f);
+		DisplayAttackRange(attackArea2, 0.63f);
+
+		yield return new WaitForSeconds(0.53f);
+		effect1.Play();
+		yield return new WaitForSeconds(0.1f);
+		if (CheckEnemyInArea(attackArea1))
+		{
+			Hit(damage, stiff);
+		}
+
+		yield return new WaitForSeconds(0.73f);
+		effect2.Play();
+		yield return new WaitForSeconds(0.1f);
+		if (CheckEnemyInArea(attackArea2))
+		{
+			Hit(damage, stiff);
+		}
+
+		yield return new WaitForSeconds(1.1f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
+public class ChargeCommand : Command
+{
+	public ChargeCommand(Direction dir = Direction.right)
+		: base(CommandId.Charge, "돌진", 3, 1, 60, DirectionType.cross, ClassType.knight)
+	{
+		this.dir = dir;
+		description = "3칸 돌진합니다. 부딪힌 적에게 피해를 입히고 자신도 반동 피해를 입습니다. " +
+			"공격당한 적은 경직 상태가 되고 한 칸 밀려납니다. 시전 중 저지불가 상태.";
+		previewPos = ((0, 2), (3, 2));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		PlayerInfo enemy = GetEnemyInfo();
+		Grid grid = GetGrid();
+
+		SetAnimState(AnimState.charge);
+
+		Buff unStop = new Buff(BuffCategory.unStoppable, true);
+		unStop.SetDuration(time - 0.1f);
+		ApplyBuff(commander, unStop);
+
+		Buff stiff = new Buff(BuffCategory.stiff, false);
+		stiff.SetCount(CountType.instant);
+
+		var targetPos = grid.SwitchDir((0, 3), dir);
+		targetPos = grid.ClampPos(grid.AddPos(targetPos, player.Pos()));
+		int distance = grid.DistancePos(player.Pos(), targetPos);
+
+		float endTime = 0.65f * distance;
+		var targetVec = grid.PosToVec3(targetPos);
+		var moving = player.tr.DOMove(targetVec, endTime).SetEase(Ease.Linear);
+		player.tr.LookAt(targetVec);
+
+		var effect = GetEffect();
+		effect.transform.position = player.tr.position;
+		effect.Play();
+
+		float progress = 0f;
+		while(progress < endTime)
+		{
+			effect.transform.position = player.tr.position;
+			if (enemy.Pos().Equals(player.Pos()))
+			{
+				effect.Stop();
+				Hit(totalDamage, stiff);
+				moving.Kill();
+				player.TakeDamage(20, 20);
+				SetAnimState(AnimState.stiff);
+				player.tr.LookAt(enemy.tr);
+				enemy.tr.LookAt(player.tr);
+
+				var playerBackPos = grid.SwitchDir((0, -1), dir);
+				playerBackPos = grid.AddPos(player.Pos(), playerBackPos, true);
+				player.tr.DOMove(grid.PosToVec3(playerBackPos), 0.3f).SetEase(Ease.OutCubic);
+
+				var enemyBackPos = grid.SwitchDir((0, 1), dir);
+				enemyBackPos = grid.AddPos(enemy.Pos(), enemyBackPos, true);
+				enemy.tr.DOMove(grid.PosToVec3(enemyBackPos),0.3f).SetEase(Ease.OutCubic);
+
+				yield return new WaitForSeconds(0.3f);
+				break;
+			}
+			yield return null;
+			progress += Time.deltaTime;
+		}
+
+		SetAnimState(AnimState.idle);
+	}
+}
 #endregion
 
 #region 늑대인간 커맨드
@@ -586,7 +742,6 @@ public class CuttingCommand : Command
 
 		if (player.transformCount.Equals(0))
 		{
-			BattleLog("베기");
 			List<(int x, int y)> attackArea = new List<(int x, int y)>() { (0, 1), (-1, 1), (1, 1) };
 			attackArea = CalculateArea(attackArea, player.Pos(), dir);
 			player.tr.LookAt(grid.PosToVec3(attackArea[0]));
@@ -596,7 +751,7 @@ public class CuttingCommand : Command
 			SetAnimState(AnimState.cutting);
 			DisplayAttackRange(attackArea, 0.28f);
 			yield return new WaitForSeconds(0.33f);
-			if(CheckEnemyInArea(attackArea))
+			if (CheckEnemyInArea(attackArea))
 			{
 				Hit(damage);
 			}
@@ -605,7 +760,6 @@ public class CuttingCommand : Command
 		}
 		else
 		{
-			BattleLog("할퀴기");
 			List<(int x, int y)> attackArea = new List<(int x, int y)>() { (0, 1), (-1, 1), (1, 1), (-1, 0), (1, 0) };
 			attackArea = CalculateArea(attackArea, player.Pos(), dir);
 			player.tr.LookAt(grid.PosToVec3(attackArea[0]));
@@ -617,12 +771,12 @@ public class CuttingCommand : Command
 			yield return new WaitForSeconds(0.33f);
 			if (CheckEnemyInArea(attackArea))
 			{
-				Hit(damage, true);
+				Hit(damage);
 			}
 			yield return new WaitForSeconds(0.19f);
 			if (CheckEnemyInArea(attackArea))
 			{
-				Hit(damage, true);
+				Hit(damage);
 			}
 			yield return new WaitForSeconds(0.4f);
 			SetAnimState(AnimState.idle);
@@ -651,7 +805,7 @@ public class LeapAttackCommand : Command
 		{
 			BattleLog("1칸 도약");
 
-			List<(int x, int y)> attackArea = new List<(int x, int y)>() { (0,2) };
+			List<(int x, int y)> attackArea = new List<(int x, int y)>() { (0, 2) };
 			attackArea = CalculateArea(attackArea, player.Pos(), dir);
 			player.tr.LookAt(grid.PosToVec3(attackArea[0]));
 
@@ -721,7 +875,7 @@ public class InnerWildnessCommand : Command
 
 		if (player.transformCount.Equals(0))
 		{
-			BattleLog("내면의 야성");
+			BattleLog("체력 -20. 5초간 공격 강화.");
 
 			Buff dealDamageIncrease = new Buff(BuffCategory.dealDamage, true, +0.3f);
 			dealDamageIncrease.SetDuration(5f);
@@ -740,7 +894,7 @@ public class InnerWildnessCommand : Command
 		}
 		else
 		{
-			BattleLog("하울링");
+			BattleLog("5초간 공격 강화.");
 
 			Buff dealDamageIncrease = new Buff(BuffCategory.dealDamage, true, +0.3f);
 			dealDamageIncrease.SetDuration(5f);
@@ -755,6 +909,53 @@ public class InnerWildnessCommand : Command
 			yield return new WaitForSeconds(0.15f);
 			SetAnimState(AnimState.idle);
 		}
+
+		yield break;
+	}
+}
+
+public class HeartRipCommand : Command
+{
+	public HeartRipCommand(Direction dir = Direction.right)
+		: base(CommandId.HeartRip, "뽑아찢기", 2, 2, 30, DirectionType.cross, ClassType.werewolf)
+	{
+		this.dir = dir;
+		description = "적의 심장을 뽑아 찢습니다. 늑대 상태에서는 입힌 피해량만큼 회복합니다.";
+		previewPos = ((2, 2), (3, 2));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Grid grid = GetGrid();
+
+		List<(int x, int y)> attackArea = new List<(int x, int y)>() { (0, 1), (0, 2) };
+		attackArea = CalculateArea(attackArea, player.Pos(), dir);
+		player.tr.LookAt(grid.PosToVec3(attackArea[0]));
+
+		var effect = GetEffect();
+
+		// 수치조정
+		int damage = this.totalDamage;
+		SetAnimState(AnimState.heartRip);
+		DisplayAttackRange(attackArea, 0.56f);
+		yield return new WaitForSeconds(0.66f);
+		if (CheckEnemyInArea(attackArea))
+		{
+			effect.transform.position = GetEnemyInfo().tr.position + Vector3.up * 1.73f;
+			effect.Play();
+			if (player.transformCount.Equals(0))
+			{
+				Hit(damage);
+			}
+			else
+			{
+				int realDamage = Hit(damage);
+				player.Restore(realDamage);
+			}
+		}
+		yield return new WaitForSeconds(0.4f);
+		SetAnimState(AnimState.idle);
 
 		yield break;
 	}

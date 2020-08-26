@@ -169,6 +169,9 @@ public class Buff
 			case BuffCategory.gainResourceByTakeDamage:
 				player.resourceByTakeDamage += Mathf.RoundToInt(amount_Int);
 				break;
+			case BuffCategory.unStoppable:
+				player.isUnstoppable = true;
+				break;
 			default:
 				break;
 		}
@@ -217,6 +220,9 @@ public class Buff
 			case BuffCategory.gainResourceByTakeDamage:
 				player.resourceByTakeDamage -= Mathf.RoundToInt(amount_Percentage);
 				break;
+			case BuffCategory.unStoppable:
+				player.isUnstoppable = true;
+				break;
 			default:
 				break;
 		}
@@ -229,7 +235,8 @@ public class Buff
 
 public enum BuffCategory
 {
-	takeDamage, dealDamage, stiff, gainResourceByTakeDamage, gainResourceByDealDamage
+	takeDamage, dealDamage, stiff, gainResourceByTakeDamage, gainResourceByDealDamage,
+	unStoppable
 }
 
 public enum BuffType

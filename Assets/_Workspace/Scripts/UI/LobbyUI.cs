@@ -94,6 +94,11 @@ public class LobbyUI : MonoBehaviour
 
 	private void LateUpdate()
 	{
+		if (pre_Player != null && pre_Enemy != null)
+		{
+			pre_Player.SetPos(pre_Grid.Vec3ToPos(pre_Player.tr.position));
+			pre_Enemy.SetPos(pre_Grid.Vec3ToPos(pre_Enemy.tr.position));
+		}
 		if (pre_BuffSet1 != null && pre_BuffSet2 != null)
 		{
 			pre_BuffSet1.Update(Time.deltaTime);
@@ -111,6 +116,7 @@ public class LobbyUI : MonoBehaviour
 		BackendManager.instance.LoadingEvent += Loading;
 		BackendManager.instance.ErrorEvent += GetError;
 		BackendManager.instance.GameStartEvent += GoToInGameScene;
+		UserInfo.instance.UserInfoErrorEvent += GetError;
 	}
 
 	private void RemoveHandler()
@@ -118,6 +124,7 @@ public class LobbyUI : MonoBehaviour
 		BackendManager.instance.LoadingEvent -= Loading;
 		BackendManager.instance.ErrorEvent -= GetError;
 		BackendManager.instance.GameStartEvent -= GoToInGameScene;
+		UserInfo.instance.UserInfoErrorEvent -= GetError;
 	}
 
 	#endregion
@@ -218,6 +225,7 @@ public class LobbyUI : MonoBehaviour
 			if (obj != null)
 				Destroy(obj);
 		}
+		pre_TMPList.Clear();
 		pre_ObjList.Clear();
 	}
 
@@ -290,9 +298,13 @@ public class LobbyUI : MonoBehaviour
 		if (previewExeRoutine != null)
 			StopCoroutine(previewExeRoutine);
 
-		ParticleSystem particle = pre_Command.GetEffect();
-		particle.Stop();
-		particle.Clear();
+		for (int i = 0; i < 3; i++)
+		{
+			ParticleSystem particle = pre_Command.GetEffect(i);
+			particle.Stop();
+			particle.Clear();
+		}
+		
 
 		ResetPreview();
 	}
