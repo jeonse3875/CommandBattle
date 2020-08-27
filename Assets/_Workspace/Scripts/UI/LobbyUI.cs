@@ -490,7 +490,7 @@ public class LobbyUI : MonoBehaviour
 		text_LoadingMessage.text = loadingMessage;
 	}
 
-	private void GetError(string message, ForWhat what)
+	public void GetError(string message, ForWhat what)
 	{
 		Debug.Log(what.ToString() + " 에러: " + message);
 		group_Error.SetActive(true);

@@ -24,7 +24,7 @@ public class LoginUI : MonoBehaviour
 	private void Start()
 	{
 		AddHandler();
-		BackendManager.instance.AutoLogin();
+		//BackendManager.instance.AutoLogin();
 	}
 
 	private void OnDestroy()

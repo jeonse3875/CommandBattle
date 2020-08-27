@@ -58,10 +58,10 @@ public class DamageTMP : MonoBehaviour
 		}
 
 		// position
-		Ease ease = Ease.Unset;
+		Ease moveEase = Ease.Unset;
 
 		if (isMultiple)
-			ease = Ease.OutCubic;
+			moveEase = Ease.OutCubic;
 
 		// Execute
 		seq = DOTween.Sequence()
@@ -70,6 +70,6 @@ public class DamageTMP : MonoBehaviour
 			.Append(tMP.DOFade(0, 1.1f).SetEase(Ease.InCubic))
 			.Join(swordIcon.DOFade(0, 1.1f).SetEase(Ease.InCubic))
 			.Join(shieldIcon.DOFade(0, 1.1f).SetEase(Ease.InCubic))
-			.Insert(0f, transform.DOMoveY(transform.position.y + 7f, 3.5f).SetEase(ease));
+			.Insert(0f, transform.DOMoveY(transform.position.y + 7f, 3.5f).SetEase(moveEase));
 	}
 }

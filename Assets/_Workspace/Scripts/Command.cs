@@ -105,7 +105,7 @@ public class CommandSet
 
 public enum ClassType
 {
-	common, knight, werewolf
+	common, knight, werewolf, hunter
 }
 
 public enum CommandId
@@ -116,6 +116,8 @@ public enum CommandId
 	EarthStrike, WhirlStrike, CombatReady, EarthWave, Charge,
 	//늑대인간
 	Cutting, LeapAttack, InnerWildness, HeartRip,
+	//사냥꾼
+	RapidShot, FlipShot, StartHunting,
 }
 
 public class Command
@@ -280,6 +282,9 @@ public class Command
 			case ClassType.werewolf:
 				className = "늑대인간";
 				break;
+			case ClassType.hunter:
+				className = "사냥꾼";
+				break;
 			default:
 				break;
 		}
@@ -369,6 +374,7 @@ public class Command
 		BattleLog(string.Format("{0} 회복", healAmount.ToString()));
 		return healAmount;
 	}
+
 }
 
 #region 공용 커맨드
@@ -383,7 +389,6 @@ public class EmptyCommand : Command
 
 	public override IEnumerator Execute()
 	{
-		Debug.Log(string.Format("[{0}] 대기", commander.ToString()));
 		AnimState lastState = GetCommanderInfo().lastAnimState;
 		if (lastState.Equals(AnimState.run) || lastState.Equals(AnimState.stiff))
 			SetAnimState(AnimState.idle);
@@ -453,6 +458,7 @@ public class GuardCommand : Command
 		damageReduce.SetDuration(2f);
 		ApplyBuff(commander, damageReduce);
 
+		GetCommanderInfo().specialize.HideWeapon(1.9f);
 		SetAnimState(AnimState.guard);
 		yield return new WaitForSeconds(1.9f);
 		SetAnimState(AnimState.idle);
@@ -619,7 +625,7 @@ public class EarthWaveCommand : Command
 		ParticleSystem effect1 = GetEffect(1);
 		effect1.transform.position = grid.PosToVec3(player.Pos());
 		ParticleSystem effect2 = GetEffect(2);
-		effect1.transform.position = grid.PosToVec3(player.Pos());
+		effect2.transform.position = grid.PosToVec3(player.Pos());
 		Buff stiff = new Buff(BuffCategory.stiff, false);
 		stiff.SetCount(CountType.instant);
 
@@ -739,6 +745,8 @@ public class CuttingCommand : Command
 	{
 		PlayerInfo player = GetCommanderInfo();
 		Grid grid = GetGrid();
+		var effect = GetEffect();
+		Transform enemyTr = GetEnemyInfo().tr;
 
 		if (player.transformCount.Equals(0))
 		{
@@ -754,6 +762,8 @@ public class CuttingCommand : Command
 			if (CheckEnemyInArea(attackArea))
 			{
 				Hit(damage);
+				effect.transform.position = enemyTr.position;
+				effect.Play();
 			}
 			yield return new WaitForSeconds(0.6f);
 			SetAnimState(AnimState.idle);
@@ -771,12 +781,16 @@ public class CuttingCommand : Command
 			yield return new WaitForSeconds(0.33f);
 			if (CheckEnemyInArea(attackArea))
 			{
-				Hit(damage);
+				Hit(damage, true);
+				effect.transform.position = enemyTr.position;
+				effect.Play();
 			}
 			yield return new WaitForSeconds(0.19f);
 			if (CheckEnemyInArea(attackArea))
 			{
-				Hit(damage);
+				Hit(damage, true);
+				effect.transform.position = enemyTr.position;
+				effect.Play();
 			}
 			yield return new WaitForSeconds(0.4f);
 			SetAnimState(AnimState.idle);
@@ -963,9 +977,131 @@ public class HeartRipCommand : Command
 
 #endregion
 
+#region 사냥꾼 커맨드
 
+public class RapidShotCommand : Command
+{
+	public RapidShotCommand(Direction dir = Direction.right)
+		: base(CommandId.RapidShot, "속사", 1, 3, 30, DirectionType.all, ClassType.hunter)
+	{
+		this.dir = dir;
+		description = "빠른 속도로 활시위를 당겨 먼 거리의 적을 공격합니다. 대각 방향으로도 사용이 가능합니다.";
+		previewPos = ((0, 2), (3, 2));
+	}
 
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Grid grid = GetGrid();
 
+		List<(int x, int y)> attackArea = new List<(int x, int y)> { (0, 1), (0, 2), (0, 3) };
+		attackArea = CalculateArea(attackArea, player.Pos(), dir);
+		player.tr.LookAt(grid.PosToVec3(attackArea[0]));
 
+		ParticleSystem effect1 = GetEffect(1);
+		TrailRenderer trail = effect1.GetComponentInChildren<TrailRenderer>();
+		effect1.transform.position = player.tr.position;
+		effect1.transform.LookAt(grid.PosToVec3(attackArea[0]));
+		trail.Clear();
+		
+		ParticleSystem effect2 = GetEffect(2);
 
+		// 수치조정
+		int damage = this.totalDamage;
+		SetAnimState(AnimState.rapidShot);
+		DisplayAttackRange(attackArea, 0.37f);
+		yield return new WaitForSeconds(0.33f);
 
+		float duration = 0.3f;
+		float progress = 0f;
+		effect1.Play();
+		effect1.Clear();
+		effect1.transform.DOMove(grid.PosToVec3(attackArea[attackArea.Count - 1]), duration)
+			.SetEase(Ease.OutCubic).OnComplete(() => { effect1.Clear(); effect1.Stop(); });
+		var enemy = GetEnemyInfo();
+		while (progress < duration)
+		{
+			if (grid.Vec3ToPos(effect1.transform.position).Equals(enemy.Pos()))
+			{
+				Hit(totalDamage);
+				effect2.transform.position = enemy.tr.position;
+				effect2.Play();
+				effect1.Stop();
+				effect1.Clear();
+				break;
+			}
+			yield return null;
+			progress += Time.deltaTime;
+		}
+
+		yield return new WaitForSeconds(0.3f + (duration - progress));
+		SetAnimState(AnimState.idle);
+	}
+}
+
+public class FlipShotCommand : Command
+{
+	public FlipShotCommand(Direction dir = Direction.right)
+		: base(CommandId.FlipShot, "후퇴 사격", 1, 2, 20, DirectionType.cross, ClassType.hunter)
+	{
+		this.dir = dir;
+		description = "전방의 적을 공격하며 뒤로 후퇴합니다.";
+		previewPos = ((1, 2), (3, 2));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Grid grid = GetGrid();
+
+		List<(int x, int y)> attackArea = new List<(int x, int y)> { (0, 2), (-1, 2), (1, 2) };
+		attackArea = CalculateArea(attackArea, player.Pos(), dir);
+		player.tr.LookAt(grid.PosToVec3(attackArea[0]));
+		var flipPos = (0, -1);
+		flipPos = grid.ClampPos(grid.AddPos(player.Pos(), grid.SwitchDir(flipPos, dir)));
+
+		var effect = GetEffect();
+		effect.transform.position = grid.PosToVec3(attackArea[0]);
+		effect.transform.LookAt(player.tr);
+
+		// 수치조정
+		DisplayAttackRange(attackArea, 0.25f);
+		yield return new WaitForSeconds(0.25f);
+		effect.Play();
+		SetAnimState(AnimState.flipShot);
+		player.tr.DOMove(grid.PosToVec3(flipPos), 0.7f).SetEase(Ease.OutCirc);
+		if (CheckEnemyInArea(attackArea))
+		{
+			Hit(totalDamage);
+		}
+		yield return new WaitForSeconds(0.6f);
+
+		SetAnimState(AnimState.idle);
+	}
+}
+
+public class StartHuntingCommand : Command
+{
+	public StartHuntingCommand(Direction dir = Direction.right)
+		: base(CommandId.StartHunting, "사냥 개시", 2, 1, 0, DirectionType.none, ClassType.hunter)
+	{
+		description = "사냥의 시작을 알립니다. 적이 다음 번에 받는 피해가 두배가 됩니다.";
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Grid grid = GetGrid();
+
+		Buff deBuff = new Buff(BuffCategory.takeDamage, false, +1f);
+		deBuff.SetCount(CountType.takeDamage);
+
+		SetAnimState(AnimState.startHunting);
+		yield return new WaitForSeconds(0.56f);
+		ApplyBuff(Enemy(), deBuff);
+		yield return new WaitForSeconds(0.4f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
+#endregion

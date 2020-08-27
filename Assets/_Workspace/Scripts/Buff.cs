@@ -131,15 +131,12 @@ public class Buff
 				if (isPercentage)
 				{
 					player.takeDamageMultiplier *= amount_Percentage;
-					if (amount_Percentage < 1f)
-					{
-						effectObj.transform.position = player.tr.position;
-						effectObj.GetComponent<FollowPlayer>().target = player.tr;
-					}
+					effectObj.transform.position = player.tr.position;
+					effectObj.GetComponent<FollowPlayer>().target = player.tr;
 				}
 				else
 				{
-
+					
 				}
 				
 				break;

@@ -68,14 +68,14 @@ public class UserInfo : MonoBehaviour
 
 	public void AddHandler()
 	{
-		BackendManager.instance.NewUserEvent += GiveDefaultCommand;
+		BackendManager.instance.NewUserEvent += GiveAllCommand; // Test
 		BackendManager.instance.DetectNewTableEvent += InitializeNewTable;
 		BackendManager.instance.DetectExistingTableEvent += AddIndate;
 	}
 
 	public void RemoveHandler()
 	{
-		BackendManager.instance.NewUserEvent -= GiveDefaultCommand;
+		BackendManager.instance.NewUserEvent -= GiveAllCommand; // Test
 		BackendManager.instance.DetectNewTableEvent -= InitializeNewTable;
 		BackendManager.instance.DetectExistingTableEvent -= AddIndate;
 	}
@@ -185,6 +185,24 @@ public class UserInfo : MonoBehaviour
 		mountedCommnadParam.Add(ClassType.knight.ToString(), knightMountedCommands);
 		param.Add(mountedCommandCol, mountedCommnadParam);
 		BackendManager.instance.UpdateData(Table.command.ToString(), tableInDate[Table.command], param);
+	}
+
+	public void GiveAllCommand()
+	{
+		foreach(ClassType cType in Enum.GetValues(typeof(ClassType)))
+		{
+			ownCommands[cType] = new List<CommandId>();
+		}
+
+		foreach(CommandId id in Enum.GetValues(typeof(CommandId)))
+		{
+			if (id.Equals(CommandId.Empty))
+				continue;
+			Command command = Command.FromId(id);
+			ownCommands[command.classType].Add(id);
+		}
+
+		UploadCommandInfo();
 	}
 
 	public static List<CommandId> GetCommandIdListFromTable(JsonData jsonData)

@@ -78,6 +78,16 @@ public class Grid
 		return Mathf.Abs(pos1.x - pos2.x) + Mathf.Abs(pos1.y - pos2.y);
 	}
 
+	public Vector3 GetBetweenVec3((int x, int y) pos1, (int x, int y) pos2)
+	{
+		float x = (pos1.x + pos2.x) / (float)2;
+		float y = (pos1.y + pos2.y) / (float)2;
+		Vector3 vec3 = zeroPoint;
+		vec3 += gridSize * (Vector3.right * x + Vector3.forward * y);
+
+		return vec3;
+	}
+
 	public (int x, int y) ClampPos((int x, int y) pos)
 	{
 		return (Mathf.Clamp(pos.x, 0, sizeX - 1), Mathf.Clamp(pos.y, 0, sizeY - 1));

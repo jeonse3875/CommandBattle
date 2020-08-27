@@ -34,7 +34,14 @@ public class ClassBlock : MonoBehaviour
             case ClassChoiceType.selectPlayingClass:
                 UserInfo.instance.playingClass = classType;
                 lobby.group_PlayingClass.SetActive(false);
-                lobby.RequestMatchMaking();
+                if(UserInfo.instance.mountedCommands[classType].Count.Equals(0))
+                {
+                    lobby.GetError("장착한 커맨드가 없습니다. 커맨드를 장착하고 다시 시도해주세요.", ForWhat.none);
+                }
+                else
+                {
+                    lobby.RequestMatchMaking();
+                }
                 break;
             default:
                 break;
