@@ -221,10 +221,11 @@ public class UserInfo : MonoBehaviour
 
 	public bool MountCommand(ClassType type, CommandId id)
 	{
-		LobbyUI lobby = GameObject.Find("LobbyUI").GetComponent<LobbyUI>();
 		if (type == ClassType.common)
 			return false;
-		
+
+		LobbyUI lobby = GameObject.Find("LobbyUI").GetComponent<LobbyUI>();
+
 		if (mountedCommands[type].Count + 1 > 8)
 		{
 			if (UserInfoErrorEvent != null)
@@ -243,6 +244,7 @@ public class UserInfo : MonoBehaviour
 			if (UpdateMountInfoEvent != null)
 				UpdateMountInfoEvent(type, id, true);
 			lobby.InstantiateMountedCommand(type, id);
+			lobby.classTapDic_Mounted[type].UpdateMountedInfo();
 			return true;
 		}
 	}
@@ -252,11 +254,14 @@ public class UserInfo : MonoBehaviour
 		if (type == ClassType.common)
 			return false;
 
+		LobbyUI lobby = GameObject.Find("LobbyUI").GetComponent<LobbyUI>();
+
 		if (mountedCommands[type].Contains(id))
 		{
 			mountedCommands[type].Remove(id);
 			if (UpdateMountInfoEvent != null)
 				UpdateMountInfoEvent(type, id, false);
+			lobby.classTapDic_Mounted[type].UpdateMountedInfo();
 			return true;
 		}
 		else

@@ -982,10 +982,10 @@ public class HeartRipCommand : Command
 public class RapidShotCommand : Command
 {
 	public RapidShotCommand(Direction dir = Direction.right)
-		: base(CommandId.RapidShot, "속사", 1, 3, 30, DirectionType.all, ClassType.hunter)
+		: base(CommandId.RapidShot, "속사", 1, 3, 30, DirectionType.cross, ClassType.hunter)
 	{
 		this.dir = dir;
-		description = "빠른 속도로 활시위를 당겨 먼 거리의 적을 공격합니다. 대각 방향으로도 사용이 가능합니다.";
+		description = "빠른 속도로 활시위를 당겨 먼 거리의 적을 공격합니다.";
 		previewPos = ((0, 2), (3, 2));
 	}
 
@@ -1012,7 +1012,7 @@ public class RapidShotCommand : Command
 		DisplayAttackRange(attackArea, 0.37f);
 		yield return new WaitForSeconds(0.33f);
 
-		float duration = 0.3f;
+		float duration = 0.33f;
 		float progress = 0f;
 		effect1.Play();
 		effect1.Clear();
@@ -1069,7 +1069,7 @@ public class FlipShotCommand : Command
 		yield return new WaitForSeconds(0.25f);
 		effect.Play();
 		SetAnimState(AnimState.flipShot);
-		player.tr.DOMove(grid.PosToVec3(flipPos), 0.7f).SetEase(Ease.OutCirc);
+		player.tr.DOMove(grid.PosToVec3(flipPos), 0.7f).SetEase(Ease.OutCubic);
 		if (CheckEnemyInArea(attackArea))
 		{
 			Hit(totalDamage);

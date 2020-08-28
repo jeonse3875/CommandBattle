@@ -33,6 +33,8 @@ public class LobbyUI : MonoBehaviour
 
 	public GameObject group_PlayingClass;
 
+	public GameObject group_ExitGame;
+
 	public bool isInit = true;
 
 
@@ -92,6 +94,12 @@ public class LobbyUI : MonoBehaviour
 		InitializeCommandInfoUI();
 	}
 
+	private void Update()
+	{
+		if (Input.GetKeyDown(KeyCode.Escape))
+			Button_GoToExitGame();
+	}
+
 	private void LateUpdate()
 	{
 		if (pre_Player != null && pre_Enemy != null)
@@ -128,6 +136,8 @@ public class LobbyUI : MonoBehaviour
 	}
 
 	#endregion
+
+	#region Preview
 
 	private void SetPreview()
 	{
@@ -229,6 +239,10 @@ public class LobbyUI : MonoBehaviour
 		pre_ObjList.Clear();
 	}
 
+	#endregion
+
+	#region Button
+
 	public void Button_StartRandomMatchMaking()
 	{
 		BackendManager.instance.JoinMatchingServer();
@@ -304,7 +318,7 @@ public class LobbyUI : MonoBehaviour
 			particle.Stop();
 			particle.Clear();
 		}
-		
+
 
 		ResetPreview();
 	}
@@ -313,6 +327,25 @@ public class LobbyUI : MonoBehaviour
 	{
 		group_Error.SetActive(false);
 	}
+
+	public void Button_GoToExitGame()
+	{
+		group_ExitGame.SetActive(true);
+	}
+
+	public void Button_ExitGame()
+	{
+		if (UserInfo.instance.isUpdatedCommandData)
+			UserInfo.instance.UploadCommandInfo();
+		Application.Quit();
+	}
+
+	public void Button_CloseExitGame()
+	{
+		group_ExitGame.SetActive(false);
+	}
+
+	#endregion
 
 	private void InitializeCommandInfoUI()
 	{
@@ -350,6 +383,7 @@ public class LobbyUI : MonoBehaviour
 				classTapObj.name = cType.ToString();
 				classTap.SetStatus(isFirstClass);
 				classTap.SetType(cType);
+				classTap.UpdateMountedInfo();
 				classTapDic_Mounted[cType] = classTap;
 
 				var classBlockObj_MountCommon = Instantiate(classBlock, classBlockParentTr_MountCommon);

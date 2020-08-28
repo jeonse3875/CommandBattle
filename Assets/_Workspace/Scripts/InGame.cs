@@ -29,6 +29,7 @@ public class InGame : MonoBehaviour
 	public string opponentNickname;
 
 	public List<Who> deadPlayerList = new List<Who>();
+	private bool isDraw = false;
 
 	public Dictionary<Who, PlayerInfo> playerInfo = new Dictionary<Who, PlayerInfo>();
 	public Grid grid;
@@ -75,6 +76,12 @@ public class InGame : MonoBehaviour
 			buffSet[Who.p1].Update(Time.deltaTime);
 			buffSet[Who.p2].Update(Time.deltaTime);
 		}
+
+		if (!deadPlayerList.Count.Equals(0) && !isGameEnd)
+		{
+			isGameEnd = true;
+			isDraw = deadPlayerList.Count.Equals(2);
+		}
 	}
 
 	private void OnDestroy()
@@ -85,13 +92,11 @@ public class InGame : MonoBehaviour
 	private void AddHandler()
 	{
 		BackendManager.instance.GetMsgEvent += GetMessage;
-		//BackendManager.instance.GameEndEvent += ExitGame;
 	}
 
 	private void RemoveHandler()
 	{
 		BackendManager.instance.GetMsgEvent -= GetMessage;
-		//BackendManager.instance.GameEndEvent -= ExitGame;
 	}
 	#endregion
 
@@ -230,17 +235,12 @@ public class InGame : MonoBehaviour
 		for (int currentTime = 0; currentTime < 10; currentTime++)
 		{
 			Debug.Log(string.Format("[{0}/10]", (currentTime + 1).ToString()));
-			bool canActP1 = playerInfo[Who.p1].canAct;
-			bool canActP2 = playerInfo[Who.p2].canAct;
 
-			if (canActP1 && !playerInfo[Who.p1].isDead)
-				commandRoutine[Who.p1] = StartCoroutine(commandList[Who.p1][currentTime].Execute());
-			else
-				playerInfo[Who.p1].canAct = true;
-			if (canActP2 && !playerInfo[Who.p2].isDead)
-				commandRoutine[Who.p2] = StartCoroutine(commandList[Who.p2][currentTime].Execute());
-			else
-				playerInfo[Who.p2].canAct = true;
+			if (playerInfo[Who.p1].isDead || playerInfo[Who.p2].isDead)
+				break;
+
+			commandRoutine[Who.p1] = StartCoroutine(commandList[Who.p1][currentTime].Execute());
+			commandRoutine[Who.p2] = StartCoroutine(commandList[Who.p2][currentTime].Execute());
 
 			yield return new WaitForSeconds(1f);
 		}
@@ -286,8 +286,6 @@ public class InGame : MonoBehaviour
 	private void CheckGameEnd()
 	{
 		Debug.Log("배틀 종료, 게임 종료 여부 결정");
-		if (deadPlayerList.Count != 0)
-			isGameEnd = true;
 	}
 
 	private IEnumerator EndGame()

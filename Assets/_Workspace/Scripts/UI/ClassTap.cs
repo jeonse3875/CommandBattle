@@ -7,6 +7,7 @@ public class ClassTap : MonoBehaviour
     public Image image_Background;
     public Image image_ClassIcon;
     public Text text_ClassName;
+    public Text text_MountedInfo;
     private LobbyUI lobbyUI;
 
     private void Start()
@@ -65,5 +66,21 @@ public class ClassTap : MonoBehaviour
             }
             lobbyUI.classTapDic_Mounted[cType].SetStatus(true);
         }
+    }
+
+    public void UpdateMountedInfo()
+    {
+        int count = UserInfo.instance.mountedCommands[cType].Count;
+        string color;
+
+        if(count.Equals(0))
+            color = "#F13242";
+        else if (count.Equals(8))
+            color = "#03BD5B";
+        else
+            color = "#FF8400";
+
+        text_MountedInfo.text = string.Format("<color={1}>{0}</color>/8", count.ToString(), color);
+        text_MountedInfo.gameObject.SetActive(true);
     }
 }

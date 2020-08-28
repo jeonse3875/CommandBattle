@@ -34,7 +34,6 @@ public class PlayerInfo
 	public Transform tr;
 	public Animator animator;
 	public AnimState lastAnimState;
-	public bool canAct = true;
 	public bool isDead = false;
 	public int transformCount = 0;
 	public bool isUnstoppable = false;
@@ -84,6 +83,9 @@ public class PlayerInfo
 
 	public int TakeDamage(int damage, int originDamage, bool isMultiple = false)
 	{
+		if (isDead)
+			return 0;
+
 		int takenDamage = Mathf.RoundToInt(damage * takeDamageMultiplier);
 		int mode;
 
