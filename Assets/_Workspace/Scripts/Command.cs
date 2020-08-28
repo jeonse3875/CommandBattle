@@ -705,17 +705,20 @@ public class ChargeCommand : Command
 				Hit(totalDamage, stiff);
 				moving.Kill();
 				player.TakeDamage(20, 20);
-				SetAnimState(AnimState.stiff);
+				
 				player.tr.LookAt(enemy.tr);
-				enemy.tr.LookAt(player.tr);
-
 				var playerBackPos = grid.SwitchDir((0, -1), dir);
 				playerBackPos = grid.AddPos(player.Pos(), playerBackPos, true);
 				player.tr.DOMove(grid.PosToVec3(playerBackPos), 0.3f).SetEase(Ease.OutCubic);
 
-				var enemyBackPos = grid.SwitchDir((0, 1), dir);
-				enemyBackPos = grid.AddPos(enemy.Pos(), enemyBackPos, true);
-				enemy.tr.DOMove(grid.PosToVec3(enemyBackPos),0.3f).SetEase(Ease.OutCubic);
+				if (!enemy.isUnstoppable)
+				{
+					enemy.tr.LookAt(player.tr);
+
+					var enemyBackPos = grid.SwitchDir((0, 1), dir);
+					enemyBackPos = grid.AddPos(enemy.Pos(), enemyBackPos, true);
+					enemy.tr.DOMove(grid.PosToVec3(enemyBackPos), 0.3f).SetEase(Ease.OutCubic);
+				}
 
 				yield return new WaitForSeconds(0.3f);
 				break;
@@ -1012,7 +1015,7 @@ public class RapidShotCommand : Command
 		DisplayAttackRange(attackArea, 0.37f);
 		yield return new WaitForSeconds(0.33f);
 
-		float duration = 0.33f;
+		float duration = 0.3f;
 		float progress = 0f;
 		effect1.Play();
 		effect1.Clear();

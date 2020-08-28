@@ -405,11 +405,19 @@ public class InGameUI : MonoBehaviour
 		logList.Clear();
 	}
 
-	public void SetMatchResultUI(bool win)
+	public void SetMatchResultUI(bool win, bool isDraw = false)
 	{
 		group_MatchResult.SetActive(true);
 
-		if(win)
+		if (isDraw)
+		{
+			text_WinOrLose.text = "무승부";
+			group_ChangePhase.SetActive(true);
+			image_LightBackground.DOFade(0.5f, 3f);
+			return;
+		}
+
+		if (win)
 		{
 			text_WinOrLose.text = "승리";
 			group_ChangePhase.SetActive(true);

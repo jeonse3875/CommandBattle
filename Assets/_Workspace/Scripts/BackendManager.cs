@@ -7,7 +7,7 @@ using System.Text;
 
 public enum ForWhat
 {
-	none, autoLogin, login, logout, signOut, createNickname, updateNickname, checkNicknameAvailable, checkNicknameExist,
+	none, signUp, autoLogin, login, logout, signOut, createNickname, updateNickname, checkNicknameAvailable, checkNicknameExist,
 	joinMatchingServer, leaveMatchingServer, matchMaking, joinGameServer, joinGameRoom
 }
 
@@ -27,15 +27,7 @@ public class BackendManager : MonoBehaviour
 
 	#region [Login] 회원관리 필드
 
-	public delegate void userManagementEventHandler(bool isSuccess, string statusCode, string message);
-
-	private BackendReturnObject customLoginBRO = new BackendReturnObject();
-	private bool isCustomLoginSuccess = false;
-	public event userManagementEventHandler CustomLoginEvent;
-
-	private BackendReturnObject autoLoginBRO = new BackendReturnObject();
-	private bool isAutoLoginSuccess = false;
-	public event userManagementEventHandler AutoLoginEvent;
+	public delegate void userManagementEventHandler(bool isSuccess);
 
 	public event userManagementEventHandler CreateNicknameEvent;
 	public event userManagementEventHandler UpdateNicknameEvent;
@@ -60,6 +52,10 @@ public class BackendManager : MonoBehaviour
 	private bool isJoinMatchingServer = false;
 	public delegate void matchMakingEventHandler(bool isSandbox);
 	public event matchMakingEventHandler FindMatchEvent;
+
+	public bool isInMatchRoom = false;
+	public bool isFriendlyMatch = false;
+	(MatchType mType, MatchModeType mmType, string indate) curRoomSetting;
 
 	#endregion
 
@@ -101,9 +97,7 @@ public class BackendManager : MonoBehaviour
 
 	private void Update()
 	{
-		CheckAutoLoginSuccess();
-		CheckCustomLoginSuccess();
-		Backend.Match.poll();
+		Backend.Match.Poll();
 	}
 
 	#endregion
@@ -137,13 +131,42 @@ public class BackendManager : MonoBehaviour
 	public void CustomSignUp(string id, string pW)
 	{
 		if (LoadingEvent != null)
-			LoadingEvent(true, ForWhat.login);
+			LoadingEvent(true, ForWhat.signUp);
 
-		BackendAsyncClass.BackendAsync(Backend.BMember.CustomSignUpAsync, id, pW, (callback) =>
+		Backend.BMember.CustomSignUp(id, pW, callback =>
 		{
-			isCustomLoginSuccess = true;
-			customLoginBRO = callback;
+			if (LoadingEvent != null)
+				LoadingEvent(false, ForWhat.signUp);
+
+			if (callback.IsSuccess())
+			{
+				Debug.Log("회원가입 성공");
+				CheckNicknameExist();
+				CheckUserInfoTable();
+			}
+			else
+			{
+				Debug.Log("회원가입 실패: " + callback.ToString());
+
+				string message;
+				switch (callback.GetStatusCode())
+				{
+					case "409":
+						message = "회원가입 실패.\n중복된 아이디가 존재합니다.";
+						break;
+					case "403":
+						message = "Active User exceed 10.";
+						break;
+					default:
+						message = "회원가입 실패. 알 수 없는 오류.";
+						break;
+				};
+
+				if (ErrorEvent != null)
+					ErrorEvent(message, ForWhat.signUp);
+			}
 		});
+
 	}
 
 	public void CustomLogin(string id, string pW)
@@ -151,11 +174,40 @@ public class BackendManager : MonoBehaviour
 		if (LoadingEvent != null)
 			LoadingEvent(true, ForWhat.login);
 
-		BackendAsyncClass.BackendAsync(Backend.BMember.CustomLoginAsync, id, pW, (callback) =>
-		{
-			isCustomLoginSuccess = true;
-			customLoginBRO = callback;
-		});
+		Backend.BMember.CustomLogin(id, pW, callback =>
+		 {
+			 if (LoadingEvent != null)
+				 LoadingEvent(false, ForWhat.login);
+
+
+			 if (callback.IsSuccess())
+			 {
+				 Debug.Log("커스텀 로그인 성공");
+				 CheckNicknameExist();
+				 CheckUserInfoTable();
+			 }
+			 else
+			 {
+				 Debug.Log("커스텀 로그인 실패: " + callback.ToString());
+
+				 string message;
+				 switch (callback.GetStatusCode())
+				 {
+					 case "401":
+						 message = "로그인 실패.\n아이디 또는 비밀번호가 틀렸습니다.";
+						 break;
+					 case "403":
+						 message = string.Format("차단당한 사용자입니다.\n사유 : {0}", callback.GetErrorCode());
+						 break;
+					 default:
+						 message = "로그인 실패. 알 수 없는 오류.";
+						 break;
+				 }
+
+				 if (ErrorEvent != null)
+					 ErrorEvent(message, ForWhat.login);
+			 }
+		 });
 	}
 
 	public void AutoLogin()
@@ -163,10 +215,41 @@ public class BackendManager : MonoBehaviour
 		if (LoadingEvent != null)
 			LoadingEvent(true, ForWhat.autoLogin);
 
-		BackendAsyncClass.BackendAsync(Backend.BMember.LoginWithTheBackendTokenAsync, (callback) =>
+		Backend.BMember.LoginWithTheBackendToken(callback =>
 		{
-			isAutoLoginSuccess = true;
-			autoLoginBRO = callback;
+			if (LoadingEvent != null)
+				LoadingEvent(false, ForWhat.autoLogin);
+
+			if (callback.IsSuccess())
+			{
+				Debug.Log("자동 로그인 성공");
+				CheckNicknameExist();
+				CheckUserInfoTable();
+			}
+			else
+			{
+				Debug.Log("자동 로그인 실패: " + callback.ToString());
+
+				string message;
+				switch (callback.GetStatusCode()) 
+				{
+					case "410":
+						message = "자동 로그인 기간이 만료되었습니다. 다시 로그인해주세요.";
+						break;
+					case "401":
+						message = "다른 기기에서 로그인하여 자동 로그인이 해제되었습니다. 다시 로그인해주세요.";
+						break;
+					case "403":
+						message = string.Format("차단당한 사용자입니다.\n사유 : {0}", callback.GetErrorCode());
+						break;
+					default:
+						message = "자동 로그인 실패. 알 수 없는 오류.";
+						break;
+				};
+
+				if (ErrorEvent != null)
+					ErrorEvent(message, ForWhat.autoLogin);
+			}
 		});
 	}
 
@@ -175,7 +258,7 @@ public class BackendManager : MonoBehaviour
 		if (LoadingEvent != null)
 			LoadingEvent(true, ForWhat.logout);
 
-		BackendAsyncClass.BackendAsync(Backend.BMember.Logout, (callback) =>
+		Backend.BMember.Logout(callback =>
 		{
 			Debug.Log("로그아웃");
 
@@ -189,7 +272,7 @@ public class BackendManager : MonoBehaviour
 		if (LoadingEvent != null)
 			LoadingEvent(true, ForWhat.signOut);
 
-		BackendAsyncClass.BackendAsync(Backend.BMember.SignOut, (callback) =>
+		Backend.BMember.Logout(callback =>
 		{
 			Debug.Log("회원탈퇴");
 
@@ -198,104 +281,12 @@ public class BackendManager : MonoBehaviour
 		});
 	}
 
-	private void CheckCustomLoginSuccess()
-	{
-		if (isCustomLoginSuccess)
-		{
-			if (LoadingEvent != null)
-				LoadingEvent(false, ForWhat.login);
-
-			BackendReturnObject saveTokenBRO = Backend.BMember.SaveToken(customLoginBRO);
-
-			if (saveTokenBRO.IsSuccess())
-			{
-				Debug.Log("로그인 성공");
-				CheckNicknameExist();
-				CheckUserInfoTable();
-			}
-			else
-			{
-				Debug.Log("로그인 실패: " + saveTokenBRO.ToString());
-				string message = "";
-				switch (saveTokenBRO.GetStatusCode())
-				{
-					case "409":
-						message = "회원가입 실패.\n중복된 아이디가 존재합니다.";
-						break;
-					case "401":
-						message = "로그인 실패.\n아이디 또는 비밀번호가 틀렸습니다.";
-						break;
-					case "403":
-						message = "접속이 차단되었습니다.\n차단 사유 : " + saveTokenBRO.GetErrorCode();
-						break;
-					default:
-						message = "알 수 없는 오류";
-						break;
-				}
-				if (ErrorEvent != null)
-					ErrorEvent(message, ForWhat.login);
-			}
-
-			if (CustomLoginEvent != null)
-				CustomLoginEvent(saveTokenBRO.IsSuccess(), saveTokenBRO.GetStatusCode(), saveTokenBRO.GetMessage());
-
-			isCustomLoginSuccess = false;
-			customLoginBRO.Clear();
-		}
-	}
-
-	private void CheckAutoLoginSuccess()
-	{
-		if (isAutoLoginSuccess)
-		{
-			if (LoadingEvent != null)
-				LoadingEvent(false, ForWhat.autoLogin);
-
-			BackendReturnObject saveToken = Backend.BMember.SaveToken(autoLoginBRO);
-
-			if (saveToken.IsSuccess())
-			{
-				Debug.Log("자동 로그인 성공");
-				CheckNicknameExist();
-				CheckUserInfoTable();
-			}
-			else
-			{
-				Debug.Log("자동 로그인 실패: " + saveToken.ToString());
-				string message = "";
-				switch (saveToken.GetStatusCode())
-				{
-					case "410":
-						message = "자동 로그인 기간 만료";
-						break;
-					case "401":
-						message = "자동 로그인 실패.\n다른 기기에서 접속한 기록이 있어 자동 로그인이 해제 되었습니다.";
-						break;
-					case "403":
-						message = "접속이 차단되었습니다.\n차단 사유 : " + saveToken.GetErrorCode();
-						break;
-					default:
-						message = "알 수 없는 오류";
-						break;
-				}
-				if (ErrorEvent != null)
-					ErrorEvent(message, ForWhat.autoLogin);
-			}
-
-			if (AutoLoginEvent != null)
-				AutoLoginEvent(saveToken.IsSuccess(), saveToken.GetStatusCode(), saveToken.GetMessage());
-
-			isAutoLoginSuccess = false;
-			autoLoginBRO.Clear();
-		}
-	}
-
 	public void CreateNickname(string nickname)
 	{
 		if (LoadingEvent != null)
 			LoadingEvent(true, ForWhat.createNickname);
 
-		BackendAsyncClass.BackendAsync(Backend.BMember.CreateNickname, nickname, (callback) =>
+		Backend.BMember.CreateNickname(nickname, callback =>
 		{
 			if (LoadingEvent != null)
 				LoadingEvent(false, ForWhat.createNickname);
@@ -309,8 +300,8 @@ public class BackendManager : MonoBehaviour
 			else
 			{
 				Debug.Log("닉네임 생성 실패: " + callback.ToString());
-				string message = "";
-				switch (callback.GetStatusCode())
+				string message;
+				switch (callback.GetStatusCode()) 
 				{
 					case "400":
 						message = "닉네임 생성 실패.\n잘못된 닉네임입니다. 닉네임 앞뒤에 공백이 포함되어있는지 확인해보세요.";
@@ -319,16 +310,18 @@ public class BackendManager : MonoBehaviour
 						message = "이미 사용 중인 닉네임입니다. 다른 닉네임으로 다시 시도해주세요.";
 						break;
 					default:
-						message = "알 수 없는 오류";
+						message = "닉네임 생성 실패. 알 수 없는 오류.";
 						break;
-				}
+				};
+
 				if (ErrorEvent != null)
 					ErrorEvent(message, ForWhat.createNickname);
 			}
 
 			if (CreateNicknameEvent != null)
-				CreateNicknameEvent(callback.IsSuccess(), callback.GetStatusCode(), callback.GetMessage());
+				CreateNicknameEvent(callback.IsSuccess());
 		});
+
 	}
 
 	public void UpdateNickname(string nickname)
@@ -336,7 +329,7 @@ public class BackendManager : MonoBehaviour
 		if (LoadingEvent != null)
 			LoadingEvent(true, ForWhat.updateNickname);
 
-		BackendAsyncClass.BackendAsync(Backend.BMember.UpdateNickname, nickname, (callback) =>
+		Backend.BMember.CreateNickname(nickname, callback =>
 		{
 			if (LoadingEvent != null)
 				LoadingEvent(false, ForWhat.updateNickname);
@@ -347,8 +340,9 @@ public class BackendManager : MonoBehaviour
 			}
 			else
 			{
-				string message = "";
-				switch (callback.GetStatusCode())
+				Debug.Log("닉네임 수정 실패: " + callback.ToString());
+				string message;
+				switch (callback.GetStatusCode()) 
 				{
 					case "400":
 						message = "닉네임 수정 실패.\n잘못된 닉네임입니다. 닉네임 앞뒤에 공백이 포함되어있는지 확인해보세요.";
@@ -357,15 +351,16 @@ public class BackendManager : MonoBehaviour
 						message = "이미 사용 중인 닉네임입니다. 다른 닉네임으로 다시 시도해주세요.";
 						break;
 					default:
-						message = "알 수 없는 오류";
+						message = "닉네임 수정 실패. 알 수 없는 오류.";
 						break;
-				}
+				};
+
 				if (ErrorEvent != null)
 					ErrorEvent(message, ForWhat.updateNickname);
 			}
 
 			if (UpdateNicknameEvent != null)
-				UpdateNicknameEvent(callback.IsSuccess(), callback.GetStatusCode(), callback.GetMessage());
+				UpdateNicknameEvent(callback.IsSuccess());
 		});
 	}
 
@@ -374,20 +369,20 @@ public class BackendManager : MonoBehaviour
 		if (LoadingEvent != null)
 			LoadingEvent(true, ForWhat.checkNicknameAvailable);
 
-		BackendAsyncClass.BackendAsync(Backend.BMember.CheckNicknameDuplication, nickname, (callback) =>
+		Backend.BMember.CreateNickname(nickname, callback =>
 		{
 			if (LoadingEvent != null)
 				LoadingEvent(false, ForWhat.checkNicknameAvailable);
 
 			if (callback.IsSuccess())
 			{
-				Debug.Log("닉네임 사용 가능");
+				Debug.Log("사용 가능한 닉네임");
 			}
 			else
 			{
-				Debug.Log("닉네임 사용 불가: " + callback.ToString());
-				string message = "";
-				switch (callback.GetStatusCode())
+				Debug.Log("사용할 수 없는 닉네임: " + callback.ToString());
+				string message;
+				switch (callback.GetStatusCode()) 
 				{
 					case "400":
 						message = "잘못된 닉네임입니다. 닉네임 앞뒤에 공백이 포함되어있는지 확인해보세요.";
@@ -396,15 +391,16 @@ public class BackendManager : MonoBehaviour
 						message = "이미 사용 중인 닉네임입니다.";
 						break;
 					default:
-						message = "알 수 없는 오류";
+						message = "사용할 수 없는 닉네임. 알 수 없는 오류.";
 						break;
-				}
+				};
+
 				if (ErrorEvent != null)
 					ErrorEvent(message, ForWhat.checkNicknameAvailable);
 			}
 
 			if (CheckNicknameAvailableEvent != null)
-				CheckNicknameAvailableEvent(callback.IsSuccess(), callback.GetStatusCode(), callback.GetMessage());
+				CheckNicknameAvailableEvent(callback.IsSuccess());
 		});
 	}
 
@@ -413,7 +409,7 @@ public class BackendManager : MonoBehaviour
 		if (LoadingEvent != null)
 			LoadingEvent(true, ForWhat.checkNicknameExist);
 
-		BackendAsyncClass.BackendAsync(Backend.BMember.GetUserInfo, (callback) =>
+		Backend.BMember.GetUserInfo(callback =>
 		{
 			if (LoadingEvent != null)
 				LoadingEvent(false, ForWhat.checkNicknameExist);
@@ -488,7 +484,7 @@ public class BackendManager : MonoBehaviour
 
 	#endregion
 
-	#region 매칭서버: 매칭서버 접속/종료, 매칭 신청/취소
+	#region 매칭서버: 매칭서버 접속/종료, 대기방 생성, 매칭 신청/취소
 
 	public void JoinMatchingServer()
 	{
@@ -508,7 +504,7 @@ public class BackendManager : MonoBehaviour
 			else
 			{
 				if (ErrorEvent != null)
-					ErrorEvent("매칭서버 접속 실패.\nReason : " + errorInfo.Reason,ForWhat.joinMatchingServer);
+					ErrorEvent("매칭서버 접속 실패.\nReason : " + errorInfo.Reason, ForWhat.joinMatchingServer);
 			}
 		}
 	}
@@ -520,13 +516,31 @@ public class BackendManager : MonoBehaviour
 		isJoinMatchingServer = false;
 	}
 
-	public void RequestMatchMaking(MatchType type, MatchModeType mode)
+	public void CreateMatchRoom(MatchType mType, MatchModeType mmType, string indate)
+	{
+		Backend.Match.CreateMatchRoom();
+		curRoomSetting.mType = mType;
+		curRoomSetting.mmType = mmType;
+		curRoomSetting.indate = indate;
+		isInMatchRoom = true;
+	}
+
+	public void LeaveMatchRoom()
+	{
+		if (isInMatchRoom)
+		{
+			Backend.Match.LeaveMatchRoom();
+			isInMatchRoom = false;
+		}
+	}
+
+	public void RequestMatchMaking(MatchType type, MatchModeType mode, string indate)
 	{
 		if (LoadingEvent != null)
 			LoadingEvent(true, ForWhat.matchMaking);
 
 		Debug.Log("매칭 신청");
-		Backend.Match.RequestMatchMaking(type, mode);
+		Backend.Match.RequestMatchMaking(type, mode, indate);
 	}
 
 	public void CancelMatchMaking()
@@ -560,8 +574,8 @@ public class BackendManager : MonoBehaviour
 		{
 			Debug.Log("매칭서버종료: " + args.ErrInfo.ToString());
 			bool isSuccess = args.ErrInfo.Category.Equals(ErrorCode.Success);
-			string message = "";
 
+			string message = "";
 			switch (args.ErrInfo.Category)
 			{
 				case ErrorCode.Exception:
@@ -581,6 +595,26 @@ public class BackendManager : MonoBehaviour
 			}
 		};
 
+		Backend.Match.OnMatchMakingRoomCreate += (MatchMakingInteractionEventArgs args) =>
+		{
+			if (args.ErrInfo.Equals(ErrorCode.Success))
+			{
+				if (!isFriendlyMatch)
+					RequestMatchMaking(curRoomSetting.mType, curRoomSetting.mmType, curRoomSetting.indate);
+			}
+			else
+			{
+				if (isInMatchRoom && !isFriendlyMatch)
+				{
+					RequestMatchMaking(curRoomSetting.mType, curRoomSetting.mmType, curRoomSetting.indate);
+				}
+				else
+				{ 
+					Debug.Log("매칭룸 생성 실패. Reason:" + args.Reason); 
+				}
+			}
+		};
+
 		Backend.Match.OnMatchMakingResponse += (MatchMakingResponseEventArgs args) =>
 		{
 			if (args.ErrInfo.Equals(ErrorCode.Match_InProgress))
@@ -595,8 +629,13 @@ public class BackendManager : MonoBehaviour
 					TcpEndPoint room = args.RoomInfo.m_inGameServerEndPoint;
 					if (FindMatchEvent != null)
 						FindMatchEvent(args.RoomInfo.m_enableSandbox);
+					LeaveMatchRoom();
 					JoinGameServer(room.m_address, room.m_port);
 					roomToken = args.RoomInfo.m_inGameRoomToken;
+					break;
+				case ErrorCode.Match_MatchMakingCanceled:
+					if (!isFriendlyMatch)
+						LeaveMatchRoom();
 					break;
 				case ErrorCode.Match_InvalidMatchType:
 				case ErrorCode.Match_InvalidModeType:

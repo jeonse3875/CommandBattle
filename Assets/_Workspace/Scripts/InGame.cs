@@ -232,11 +232,16 @@ public class InGame : MonoBehaviour
 	{
 		yield return new WaitForSeconds(2.5f);
 
+		int endTime = Mathf.Max(GetPlayerEndTime(Who.p1), GetPlayerEndTime(Who.p2));
+
 		for (int currentTime = 0; currentTime < 10; currentTime++)
 		{
 			Debug.Log(string.Format("[{0}/10]", (currentTime + 1).ToString()));
 
 			if (playerInfo[Who.p1].isDead || playerInfo[Who.p2].isDead)
+				break;
+
+			if (currentTime.Equals(endTime))
 				break;
 
 			commandRoutine[Who.p1] = StartCoroutine(commandList[Who.p1][currentTime].Execute());
@@ -292,23 +297,38 @@ public class InGame : MonoBehaviour
 	{
 		Debug.Log("게임 종료");
 
-		Who loser = deadPlayerList[0];
-		Who winner;
-		if (loser == Who.p1)
-			winner = Who.p2;
-		else
-			winner = Who.p1;
-
 		MatchGameResult result = new MatchGameResult();
 		result.m_winners = new List<SessionId>();
 		result.m_losers = new List<SessionId>();
-		result.m_winners.Add(sessionId[winner]);
-		result.m_losers.Add(sessionId[loser]);
-		BackendManager.instance.GameEnd(result);
-		playerInfo[winner].tr.LookAt(grid.PosToVec3((2, -1)));
-		playerInfo[winner].SetAnimState(AnimState.winner);
-		yield return new WaitForSeconds(cam.ZoomInTarget(playerInfo[me].tr.position));
-		inGameUI.SetMatchResultUI(winner.Equals(me));
+		result.m_draws = new List<SessionId>();
+
+		if (isDraw)
+		{
+			result.m_draws.Add(sessionId[Who.p1]);
+			result.m_draws.Add(sessionId[Who.p2]);
+			BackendManager.instance.GameEnd(result);
+
+			inGameUI.SetMatchResultUI(false, true);
+		}
+		else
+		{
+			Who loser = deadPlayerList[0];
+			Who winner;
+			if (loser == Who.p1)
+				winner = Who.p2;
+			else
+				winner = Who.p1;
+			result.m_winners.Add(sessionId[winner]);
+			result.m_losers.Add(sessionId[loser]);
+			BackendManager.instance.GameEnd(result);
+
+			playerInfo[winner].tr.LookAt(grid.PosToVec3((2, -1)));
+			playerInfo[winner].SetAnimState(AnimState.winner);
+			yield return new WaitForSeconds(cam.ZoomInTarget(playerInfo[me].tr.position));
+			inGameUI.SetMatchResultUI(winner.Equals(me));
+		}
+		
+		
 	}
 
 	#endregion
@@ -338,16 +358,27 @@ public class InGame : MonoBehaviour
 		}
 	}
 
-	public void StopCommand(Who who, bool forceStop = false)
+	public bool StopCommand(Who who, bool forceStop = false)
 	{
-		if (commandRoutine[who] != null && !playerInfo[who].isUnstoppable)
+		if (commandRoutine[who] != null && (!playerInfo[who].isUnstoppable || forceStop))
 		{
 			StopCoroutine(commandRoutine[who]);
+			return true;
 		}
-		else if (commandRoutine[who] != null && forceStop)
-		{
-			StopCoroutine(commandRoutine[who]);
-		}
+
+		return false;
+	}
+
+	public void DelayDeath(Who who)
+	{
+		StartCoroutine(DelayDeathRoutine(who));
+	}
+
+	private IEnumerator DelayDeathRoutine(Who who)
+	{
+		yield return null;
+		StopCommand(who, true);
+		playerInfo[who].animator.SetInteger("state", 3);
 	}
 
 	public void InstantiateAttackRange(Who commander, (int x, int y) pos, float destroyTime)
@@ -387,5 +418,23 @@ public class InGame : MonoBehaviour
 	public static void DestroyObj(GameObject obj)
 	{
 		Destroy(obj);
+	}
+
+	private int GetPlayerEndTime(Who who)
+	{
+		int index = 0;
+		while (index < 10)
+		{
+			if (commandList[who][index].id.Equals(CommandId.Empty))
+			{
+				break;
+			}
+			else
+			{
+				index += commandList[who][index].time;
+			}
+		}
+
+		return index;
 	}
 }

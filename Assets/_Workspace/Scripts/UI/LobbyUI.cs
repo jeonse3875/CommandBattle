@@ -83,6 +83,8 @@ public class LobbyUI : MonoBehaviour
 	private GameObject pre_P1Obj;
 	private GameObject pre_P2Obj;
 
+	private string randomOneOnOneIndate = "2020-07-07T07:29:09.015Z";
+
 	#region LifeCycle
 
 	private void Start()
@@ -249,9 +251,9 @@ public class LobbyUI : MonoBehaviour
 		group_PlayingClass.SetActive(true);
 	}
 
-	public void RequestMatchMaking()
+	public void RequestRandomMatchMaking()
 	{
-		BackendManager.instance.RequestMatchMaking(MatchType.Random, MatchModeType.OneOnOne);
+		BackendManager.instance.CreateMatchRoom(MatchType.Random, MatchModeType.OneOnOne, randomOneOnOneIndate);
 	}
 
 	public void Button_CancelMatchmaking()

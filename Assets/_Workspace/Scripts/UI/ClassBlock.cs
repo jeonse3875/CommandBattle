@@ -40,7 +40,7 @@ public class ClassBlock : MonoBehaviour
                 }
                 else
                 {
-                    lobby.RequestMatchMaking();
+                    lobby.RequestRandomMatchMaking();
                 }
                 break;
             default:

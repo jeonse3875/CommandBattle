@@ -102,7 +102,7 @@ public class LoginUI : MonoBehaviour
 		SceneManager.LoadSceneAsync("Lobby");
 	}
 
-	private void OnCreateNickname(bool isSuccess, string statusCode, string message)
+	private void OnCreateNickname(bool isSuccess)
 	{
 		if (isSuccess)
 		{

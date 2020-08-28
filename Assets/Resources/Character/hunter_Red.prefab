@@ -63758,7 +63758,6 @@ GameObject:
   m_Component:
   - component: {fileID: 5838363717252414675}
   - component: {fileID: 5790978936771996789}
-  - component: {fileID: 504685440168128984}
   - component: {fileID: 5856145648065532435}
   m_Layer: 9
   m_Name: hunter_Red
@@ -63802,20 +63801,6 @@ Animator:
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorControllerStateOnDisable: 0
---- !u!114 &504685440168128984
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5840867707478308035}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e51b21144f613bb43a38cf5a68def8dd, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  weapon:
-  - {fileID: 0}
 --- !u!114 &5856145648065532435
 MonoBehaviour:
   m_ObjectHideFlags: 0

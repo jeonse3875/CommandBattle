@@ -115,8 +115,7 @@ public class PlayerInfo
 				Debug.Log(string.Format("'{0}' 죽음", me.ToString()));
 				isDead = true;
 				InGame.instance.deadPlayerList.Add(me);
-				InGame.instance.StopCommand(me, true);
-				animator.SetInteger("state", 3);
+				InGame.instance.DelayDeath(me);
 			}
 		}
 
