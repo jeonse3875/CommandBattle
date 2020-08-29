@@ -68,14 +68,14 @@ public class UserInfo : MonoBehaviour
 
 	public void AddHandler()
 	{
-		BackendManager.instance.NewUserEvent += GiveAllCommand; // Test
+		//BackendManager.instance.NewUserEvent += GiveAllCommand; // Test
 		BackendManager.instance.DetectNewTableEvent += InitializeNewTable;
 		BackendManager.instance.DetectExistingTableEvent += AddIndate;
 	}
 
 	public void RemoveHandler()
 	{
-		BackendManager.instance.NewUserEvent -= GiveAllCommand; // Test
+		//BackendManager.instance.NewUserEvent -= GiveAllCommand; // Test
 		BackendManager.instance.DetectNewTableEvent -= InitializeNewTable;
 		BackendManager.instance.DetectExistingTableEvent -= AddIndate;
 	}

@@ -117,7 +117,7 @@ public enum CommandId
 	//늑대인간
 	Cutting, LeapAttack, InnerWildness, HeartRip,
 	//사냥꾼
-	RapidShot, FlipShot, StartHunting,
+	RapidShot, FlipShot, StartHunting, HunterTrap,
 }
 
 public class Command
@@ -142,6 +142,8 @@ public class Command
 	public Transform pre_Particles;
 	public BuffSet pre_BuffSet1;
 	public BuffSet pre_BuffSet2;
+
+	public Tween movingTween;
 
 	public Command(CommandId id, string name, int time, int limit, int totalDamage, DirectionType dirType, ClassType classType)
 	{
@@ -375,6 +377,24 @@ public class Command
 		return healAmount;
 	}
 
+	public GameObject SetTrap((int x, int y) pos, Who target, int damage, Buff deBuff = null)
+	{
+		GameObject trap;
+		if(isPreview)
+		{
+			LobbyUI lobby = GameObject.Find("LobbyUI").GetComponent<LobbyUI>();
+			trap = lobby.InstantiateTrap(id);
+		}
+		else
+		{
+			trap = InGame.instance.InstantiateTrap(id);
+		}
+
+		trap.GetComponent<Trap>().SetTrap(pos, target, damage, deBuff, isPreview);
+
+		return trap;
+	}
+
 }
 
 #region 공용 커맨드
@@ -484,7 +504,6 @@ public class HealPotionCommand : Command
 		SetAnimState(AnimState.idle);
 	}
 }
-
 
 #endregion
 
@@ -663,7 +682,7 @@ public class ChargeCommand : Command
 	{
 		this.dir = dir;
 		description = "3칸 돌진합니다. 부딪힌 적에게 피해를 입히고 자신도 반동 피해를 입습니다. " +
-			"공격당한 적은 경직 상태가 되고 한 칸 밀려납니다. 시전 중 저지불가 상태.";
+			"공격당한 적은 경직 상태가 되고 한 칸 밀려납니다.";
 		previewPos = ((0, 2), (3, 2));
 	}
 
@@ -675,10 +694,6 @@ public class ChargeCommand : Command
 
 		SetAnimState(AnimState.charge);
 
-		Buff unStop = new Buff(BuffCategory.unStoppable, true);
-		unStop.SetDuration(time - 0.1f);
-		ApplyBuff(commander, unStop);
-
 		Buff stiff = new Buff(BuffCategory.stiff, false);
 		stiff.SetCount(CountType.instant);
 
@@ -688,7 +703,7 @@ public class ChargeCommand : Command
 
 		float endTime = 0.65f * distance;
 		var targetVec = grid.PosToVec3(targetPos);
-		var moving = player.tr.DOMove(targetVec, endTime).SetEase(Ease.Linear);
+		movingTween = player.tr.DOMove(targetVec, endTime).SetEase(Ease.Linear);
 		player.tr.LookAt(targetVec);
 
 		var effect = GetEffect();
@@ -703,10 +718,11 @@ public class ChargeCommand : Command
 			{
 				effect.Stop();
 				Hit(totalDamage, stiff);
-				moving.Kill();
+				movingTween.Kill();
 				player.TakeDamage(20, 20);
 				
 				player.tr.LookAt(enemy.tr);
+				player.SetAnimState(AnimState.stiff);
 				var playerBackPos = grid.SwitchDir((0, -1), dir);
 				playerBackPos = grid.AddPos(player.Pos(), playerBackPos, true);
 				player.tr.DOMove(grid.PosToVec3(playerBackPos), 0.3f).SetEase(Ease.OutCubic);
@@ -809,7 +825,7 @@ public class LeapAttackCommand : Command
 		: base(CommandId.LeapAttack, "도약 공격", 2, 2, 30, DirectionType.all, ClassType.werewolf)
 	{
 		this.dir = dir;
-		description = "빠르게 도약하여 적을 공격합니다. 늑대 상태에서는 도약 거리가 증가합니다. 대각 방향으로도 사용이 가능합니다.";
+		description = "빠르게 도약하여 적을 공격합니다. 늑대 상태에서는 도약 거리가 증가합니다. 모든 방향으로 사용이 가능합니다.";
 		previewPos = ((0, 2), (3, 2));
 	}
 
@@ -834,7 +850,7 @@ public class LeapAttackCommand : Command
 			int damage = this.totalDamage;
 
 			SetAnimState(AnimState.leapAttack);
-			player.tr.DOMove(targetPosVec, 0.7f).SetEase(Ease.OutCirc);
+			movingTween = player.tr.DOMove(targetPosVec, 0.7f).SetEase(Ease.OutCirc);
 			yield return new WaitForSeconds(0.6f);
 			DisplayAttackRange(attackArea, 0.35f);
 			yield return new WaitForSeconds(0.4f);
@@ -1072,7 +1088,7 @@ public class FlipShotCommand : Command
 		yield return new WaitForSeconds(0.25f);
 		effect.Play();
 		SetAnimState(AnimState.flipShot);
-		player.tr.DOMove(grid.PosToVec3(flipPos), 0.7f).SetEase(Ease.OutCubic);
+		movingTween = player.tr.DOMove(grid.PosToVec3(flipPos), 0.7f).SetEase(Ease.OutCubic);
 		if (CheckEnemyInArea(attackArea))
 		{
 			Hit(totalDamage);
@@ -1102,7 +1118,47 @@ public class StartHuntingCommand : Command
 		SetAnimState(AnimState.startHunting);
 		yield return new WaitForSeconds(0.56f);
 		ApplyBuff(Enemy(), deBuff);
+		BattleLog("적 방어 1회 약화");
 		yield return new WaitForSeconds(0.4f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
+public class HunterTrapCommand : Command
+{
+	public HunterTrapCommand(Direction dir = Direction.right)
+		: base(CommandId.HunterTrap, "사냥꾼의 덫", 1, 1, 25, DirectionType.all, ClassType.hunter)
+	{
+		this.dir = dir;
+		description = "밟으면 피해를 입고 경직 상태가 되는 덫을 설치합니다. " +
+			"덫은 턴이 끝나도 유지되고 자신은 밟지 않습니다. 모든 방향으로 사용이 가능합니다.";
+		previewPos = ((2, 2), (3, 2));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Grid grid = GetGrid();
+
+		(int x, int y) pos = (0, 1);
+		pos = grid.SwitchDir(pos, dir);
+		pos = grid.AddPos(player.Pos(), pos);
+		Vector3 vec = grid.PosToVec3(pos);
+
+		Buff stiff = new Buff(BuffCategory.stiff, false);
+		stiff.SetCount(CountType.instant);
+
+		player.tr.LookAt(vec);
+		SetAnimState(AnimState.hunterTrap);
+		yield return new WaitForSeconds(0.37f);
+		BattleLog("덫 설치");
+		var trap = SetTrap(pos, Enemy(), totalDamage, stiff);
+		trap.transform.position = player.tr.position + Vector3.up * 1.7f;
+		float duration = 0.2f;
+		trap.transform.DOMoveX(vec.x, duration).SetEase(Ease.OutQuad);
+		trap.transform.DOMoveZ(vec.z, duration).SetEase(Ease.OutQuad);
+		trap.transform.DOMoveY(0, duration).SetEase(Ease.InSine);
+		yield return new WaitForSeconds(0.55f);
 		SetAnimState(AnimState.idle);
 	}
 }

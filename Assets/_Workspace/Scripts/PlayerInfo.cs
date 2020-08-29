@@ -152,6 +152,7 @@ public class PlayerInfo
 		{
 			InGame.instance.InstantiateDamageTMP(tr, amount.ToString(), -2);
 			HP += amount;
+			InGame.instance.inGameUI.UpdateHealth(me);
 		}
 
 		return amount;
@@ -185,5 +186,5 @@ public enum AnimState
 	idle = 0, run = 1, earthStrike = 2, death = 3, whirlStrike = 4, stiff = 5, guard = 6,
 	combatReady = 7, cutting = 8, scratch = 9, leapAttack = 10, innerWildness = 11,
 	winner = 12, earthWave = 13, heartRip = 14, healPotion = 15, charge = 16,
-	rapidShot = 17, flipShot = 18, startHunting = 19,
+	rapidShot = 17, flipShot = 18, startHunting = 19, hunterTrap = 20,
 }

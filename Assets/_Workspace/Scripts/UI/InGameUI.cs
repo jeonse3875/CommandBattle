@@ -64,6 +64,9 @@ public class InGameUI : MonoBehaviour
 
 	public GameObject button_ViewLastBattle;
 	public GameObject button_BackToCommandUI;
+	public Text text_LeaveEnd;
+
+	public List<Image> pushedCommandList;
 
 	private void Update()
 	{
@@ -226,6 +229,13 @@ public class InGameUI : MonoBehaviour
 		UpdateCommandButton();
 	}
 
+	public void Button_RemoveLastCommand()
+	{
+		playerCommandSet.Pop();
+		UpdateCapacity();
+		UpdateCommandButton();
+	}
+
 	public void Button_SetDirection(int dirNum)
 	{
 		Direction dir = (Direction)dirNum;
@@ -245,8 +255,35 @@ public class InGameUI : MonoBehaviour
 	private void UpdateCapacity()
 	{
 		int total = playerCommandSet.GetTotalTime();
-		setCapicity.text = total.ToString() + " / 10";
-		capacitySlider.value = total / 10f;
+		string color;
+
+		if (total <= 2)
+			color = "#F13242";
+		else if (total <= 9)
+			color = "#FF8400";
+		else
+			color = "#03BD5B";
+
+		setCapicity.text = string.Format("<color={1}>{0}</color>/10", total, color);
+		if (total.Equals(0))
+			capacitySlider.value = 0f;
+		else
+			capacitySlider.value = Mathf.Clamp(total / 10f + 0.01f, 0f, 1f);
+
+		int index = 0;
+
+		foreach(var image in pushedCommandList)
+		{
+			image.gameObject.SetActive(false);
+		}
+
+		foreach(var command in playerCommandSet.commandList)
+		{
+			var image = pushedCommandList[index];
+			image.sprite = command.GetCommandIcon();
+			image.gameObject.SetActive(true);
+			index += command.time;
+		}
 	}
 
 	public void UpdateHealth(Who who)
@@ -405,7 +442,7 @@ public class InGameUI : MonoBehaviour
 		logList.Clear();
 	}
 
-	public void SetMatchResultUI(bool win, bool isDraw = false)
+	public void SetMatchResultUI(bool win, bool isDraw = false, bool isLeaveEnd = false)
 	{
 		group_MatchResult.SetActive(true);
 
@@ -415,6 +452,11 @@ public class InGameUI : MonoBehaviour
 			group_ChangePhase.SetActive(true);
 			image_LightBackground.DOFade(0.5f, 3f);
 			return;
+		}
+
+		if(isLeaveEnd)
+		{
+			text_LeaveEnd.gameObject.SetActive(true);
 		}
 
 		if (win)

@@ -78,6 +78,8 @@ public class BackendManager : MonoBehaviour
 	public event getMsgEventHandler GetMsgEvent;
 	public delegate void gameEndEventHandler();
 	public event gameEndEventHandler GameEndEvent;
+	public delegate void leaveGameEventHandler(SessionId id);
+	public event leaveGameEventHandler LeaveGameEvent;
 
 	#endregion
 
@@ -821,6 +823,12 @@ public class BackendManager : MonoBehaviour
 		{
 			if (GameEndEvent != null)
 				GameEndEvent();
+		};
+
+		Backend.Match.OnSessionOffline += (MatchInGameSessionEventArgs args) =>
+		{
+			if (LeaveGameEvent != null)
+				LeaveGameEvent(args.GameRecord.m_sessionId);
 		};
 	}
 

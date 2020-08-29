@@ -1,4 +1,5 @@
 ﻿using BackEnd.Tcp;
+using DG.Tweening;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -29,7 +30,9 @@ public class InGame : MonoBehaviour
 	public string opponentNickname;
 
 	public List<Who> deadPlayerList = new List<Who>();
+	private List<Who> leavePlayerList = new List<Who>();
 	private bool isDraw = false;
+	private bool isLeaveEnd = false;
 
 	public Dictionary<Who, PlayerInfo> playerInfo = new Dictionary<Who, PlayerInfo>();
 	public Grid grid;
@@ -38,6 +41,7 @@ public class InGame : MonoBehaviour
 	public Dictionary<CommandId, ParticleSystem> effects = new Dictionary<CommandId, ParticleSystem>();
 
 	public Dictionary<Who, Coroutine> commandRoutine = new Dictionary<Who, Coroutine>();
+	public Dictionary<Who, Command> playingCommand = new Dictionary<Who, Command>();
 
 	public GameObject attackRangeBlue;
 	public GameObject attackRangeRed;
@@ -92,12 +96,15 @@ public class InGame : MonoBehaviour
 	private void AddHandler()
 	{
 		BackendManager.instance.GetMsgEvent += GetMessage;
+		BackendManager.instance.LeaveGameEvent += LeaveGame;
 	}
 
 	private void RemoveHandler()
 	{
 		BackendManager.instance.GetMsgEvent -= GetMessage;
+		BackendManager.instance.LeaveGameEvent -= LeaveGame;
 	}
+
 	#endregion
 
 	#region 게임루틴
@@ -217,6 +224,7 @@ public class InGame : MonoBehaviour
 
 	private bool IsCommandComplete()
 	{
+		CheckSomeoneLeaveGame();
 		return isCommandComplete[Who.p1] && isCommandComplete[Who.p2];
 	}
 
@@ -230,9 +238,15 @@ public class InGame : MonoBehaviour
 
 	private IEnumerator BattleRoutine()
 	{
+		if (isLeaveEnd)
+			yield break;
+
 		yield return new WaitForSeconds(2.5f);
 
 		int endTime = Mathf.Max(GetPlayerEndTime(Who.p1), GetPlayerEndTime(Who.p2));
+
+		if (!commandList.ContainsKey(Who.p1) || !commandList.ContainsKey(Who.p2))
+			yield break;
 
 		for (int currentTime = 0; currentTime < 10; currentTime++)
 		{
@@ -244,8 +258,21 @@ public class InGame : MonoBehaviour
 			if (currentTime.Equals(endTime))
 				break;
 
-			commandRoutine[Who.p1] = StartCoroutine(commandList[Who.p1][currentTime].Execute());
-			commandRoutine[Who.p2] = StartCoroutine(commandList[Who.p2][currentTime].Execute());
+			if (commandList[Who.p1][currentTime].id.Equals(CommandId.Empty))
+				StartCoroutine(commandList[Who.p1][currentTime].Execute());
+			else
+			{
+				commandRoutine[Who.p1] = StartCoroutine(commandList[Who.p1][currentTime].Execute());
+				playingCommand[Who.p1] = commandList[Who.p1][currentTime];
+			}
+
+			if (commandList[Who.p2][currentTime].id.Equals(CommandId.Empty))
+				StartCoroutine(commandList[Who.p2][currentTime].Execute());
+			else
+			{
+				commandRoutine[Who.p2] = StartCoroutine(commandList[Who.p2][currentTime].Execute());
+				playingCommand[Who.p2] = commandList[Who.p2][currentTime];
+			}
 
 			yield return new WaitForSeconds(1f);
 		}
@@ -285,6 +312,7 @@ public class InGame : MonoBehaviour
 
 	private bool IsBattleEnd()
 	{
+		CheckSomeoneLeaveGame();
 		return isBattleEnd[Who.p1] && isBattleEnd[Who.p2];
 	}
 
@@ -325,10 +353,24 @@ public class InGame : MonoBehaviour
 			playerInfo[winner].tr.LookAt(grid.PosToVec3((2, -1)));
 			playerInfo[winner].SetAnimState(AnimState.winner);
 			yield return new WaitForSeconds(cam.ZoomInTarget(playerInfo[me].tr.position));
-			inGameUI.SetMatchResultUI(winner.Equals(me));
+			inGameUI.SetMatchResultUI(winner.Equals(me), false, isLeaveEnd);
 		}
 		
-		
+	}
+
+	private void CheckSomeoneLeaveGame()
+	{
+		if (!leavePlayerList.Count.Equals(0))
+		{
+			isCommandComplete[Who.p1] = true;
+			isCommandComplete[Who.p2] = true;
+			isBattleEnd[Who.p1] = true;
+			isBattleEnd[Who.p2] = true;
+			deadPlayerList.Add(leavePlayerList[0]);
+			isGameEnd = true;
+			isDraw = false;
+			isLeaveEnd = true;
+		}
 	}
 
 	#endregion
@@ -358,11 +400,24 @@ public class InGame : MonoBehaviour
 		}
 	}
 
+	private void LeaveGame(SessionId leaveId)
+	{
+		if (sessionId[Who.p1].Equals(leaveId))
+			leavePlayerList.Add(Who.p1);
+		else
+			leavePlayerList.Add(Who.p2);
+	}
+
 	public bool StopCommand(Who who, bool forceStop = false)
 	{
-		if (commandRoutine[who] != null && (!playerInfo[who].isUnstoppable || forceStop))
+		if (!playerInfo[who].isUnstoppable || forceStop)
 		{
-			StopCoroutine(commandRoutine[who]);
+			if (commandRoutine[who] != null)
+				StopCoroutine(commandRoutine[who]);
+
+			if (playingCommand.ContainsKey(who) && playingCommand[who].movingTween != null)
+				playingCommand[who].movingTween.Kill();
+			
 			return true;
 		}
 
@@ -405,6 +460,12 @@ public class InGame : MonoBehaviour
 		tmp.SetEffect(mode, isMultiple);
 	}
 
+	public GameObject InstantiateTrap(CommandId id)
+	{
+		GameObject obj = Instantiate(Resources.Load<GameObject>(string.Format("Trap/{0}", id.ToString())));
+		return obj;
+	}
+
 	public static GameObject InstantiateBuffEffect(Buff buff)
 	{
 		string name = string.Format("Buff/{0}_{1}_{2}", buff.category.ToString(), buff.isGood.ToString(), buff.buffType.ToString());
@@ -425,6 +486,9 @@ public class InGame : MonoBehaviour
 		int index = 0;
 		while (index < 10)
 		{
+			if (!commandList.ContainsKey(who))
+				break;
+
 			if (commandList[who][index].id.Equals(CommandId.Empty))
 			{
 				break;

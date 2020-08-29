@@ -157,8 +157,13 @@ public class Buff
 				break;
 			case BuffCategory.stiff:
 				if (!isPreview)
+				{
 					if (InGame.instance.StopCommand(player.me))
 						player.SetAnimState(AnimState.stiff);
+				}
+				else
+					player.SetAnimState(AnimState.stiff);
+
 				break;
 			case BuffCategory.gainResourceByDealDamage:
 				player.resourceByDealDamage += Mathf.RoundToInt(amount_Int);

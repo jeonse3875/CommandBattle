@@ -78,8 +78,8 @@ public class LobbyUI : MonoBehaviour
 	private Command pre_Command;
 	private List<GameObject> pre_ObjList = new List<GameObject>();
 	private List<DamageTMP> pre_TMPList = new List<DamageTMP>();
-	private BuffSet pre_BuffSet1;
-	private BuffSet pre_BuffSet2;
+	public BuffSet pre_BuffSet1;
+	public BuffSet pre_BuffSet2;
 	private GameObject pre_P1Obj;
 	private GameObject pre_P2Obj;
 
@@ -90,6 +90,7 @@ public class LobbyUI : MonoBehaviour
 	private void Start()
 	{
 		UserInfo.instance.UpdateCommandInfo();
+		UserInfo.instance.GiveAllCommand(); // Test
 		BackendManager.instance.JoinMatchingServer();
 		AddHandler();
 		SetPreview();
@@ -239,6 +240,13 @@ public class LobbyUI : MonoBehaviour
 		}
 		pre_TMPList.Clear();
 		pre_ObjList.Clear();
+	}
+
+	public GameObject InstantiateTrap(CommandId id)
+	{
+		GameObject obj = Instantiate(Resources.Load<GameObject>(string.Format("Trap/{0}", id.ToString())));
+		pre_ObjList.Add(obj);
+		return obj;
 	}
 
 	#endregion

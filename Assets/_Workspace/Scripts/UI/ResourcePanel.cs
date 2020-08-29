@@ -40,7 +40,11 @@ public class ResourcePanel : MonoBehaviour
 				image_Background.color = color;
 				werewolfPanel.SetActive(true);
 				break;
+			case ClassType.hunter:
+				image_Background.gameObject.SetActive(false);
+				break;
 			default:
+				image_Background.gameObject.SetActive(false);
 				break;
 		}
 
