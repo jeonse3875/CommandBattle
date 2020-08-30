@@ -20,6 +20,7 @@ public class CommandButton : MonoBehaviour
     public void InitializeButton(CommandId id)
     {
         command = Command.FromId(id);
+        command.commander = InGame.instance.me;
         image_CommandIcon.sprite = command.GetCommandIcon();
 
         if (command.limit.Equals(10))

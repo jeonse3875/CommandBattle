@@ -19562,10 +19562,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 709519e2a6ce36543a624e9a7538036e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  weapon: []
-  model_Human: {fileID: 2933826568293739394}
-  model_Wolf: {fileID: 4988542558823436629}
-  weapon_Human: {fileID: 7805050992840237534}
+  weapon:
+  - {fileID: 7805050992840237534}
+  weapon_Transform: []
+  visiblePart: {fileID: 4806513515982149223}
+  body: {fileID: 2933826568293739394}
+  body_Transform: {fileID: 4988542558823436629}
 --- !u!1 &4805868081998863703
 GameObject:
   m_ObjectHideFlags: 0

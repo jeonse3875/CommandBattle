@@ -11,7 +11,6 @@ public enum Who
 
 public class InGame : MonoBehaviour
 {
-
 	public static InGame instance;
 	public InGameUI inGameUI;
 
@@ -49,6 +48,10 @@ public class InGame : MonoBehaviour
 	public GameObject damageText;
 
 	public Dictionary<Who, BuffSet> buffSet = new Dictionary<Who, BuffSet>();
+	public Dictionary<Who, List<Buff>> chainBuffList = new Dictionary<Who, List<Buff>>();
+	public Dictionary<Who, List<GameObject>> effectObj = new Dictionary<Who, List<GameObject>>();
+
+	public Dictionary<Who, bool> isCommandHit = new Dictionary<Who, bool>();
 
 	public InGameCamera cam;
 
@@ -73,6 +76,22 @@ public class InGame : MonoBehaviour
 		{
 			playerInfo[Who.p1].SetPos(grid.Vec3ToPos(playerInfo[Who.p1].tr.position));
 			playerInfo[Who.p2].SetPos(grid.Vec3ToPos(playerInfo[Who.p2].tr.position));
+		}
+
+		if (chainBuffList.ContainsKey(Who.p1) && chainBuffList.ContainsKey(Who.p2))
+		{
+			foreach(var buff in chainBuffList[Who.p1])
+			{
+				buffSet[Who.p1].Add(buff);
+			}
+
+			foreach (var buff in chainBuffList[Who.p2])
+			{
+				buffSet[Who.p2].Add(buff);
+			}
+
+			chainBuffList[Who.p1].Clear();
+			chainBuffList[Who.p2].Clear();
 		}
 
 		if (buffSet.ContainsKey(Who.p1) && buffSet.ContainsKey(Who.p2))
@@ -110,6 +129,8 @@ public class InGame : MonoBehaviour
 	#region 게임루틴
 	private IEnumerator GameRoutine()
 	{
+		#region 연출
+
 		var waitGameStart = new WaitUntil(IsGameStart);
 		var waitCommandComplete = new WaitUntil(IsCommandComplete);
 		var waitBattleEnd = new WaitUntil(IsBattleEnd);
@@ -143,6 +164,8 @@ public class InGame : MonoBehaviour
 		// 게임 시작
 		yield return new WaitForSeconds(cam.ZoomOut());
 
+		#endregion
+
 		while (!isGameEnd)
 		{
 			InitializeVariable();
@@ -172,6 +195,14 @@ public class InGame : MonoBehaviour
 		particles[Who.p2] = GameObject.Find("Particles_p2").transform;
 		buffSet[Who.p1] = new BuffSet(Who.p1);
 		buffSet[Who.p2] = new BuffSet(Who.p2);
+		chainBuffList[Who.p1] = new List<Buff>();
+		chainBuffList[Who.p2] = new List<Buff>();
+		effectObj[Who.p1] = new List<GameObject>();
+		effectObj[Who.p2] = new List<GameObject>();
+		commandRoutine[Who.p1] = null;
+		commandRoutine[Who.p2] = null;
+		isCommandHit[Who.p1] = false;
+		isCommandHit[Who.p2] = false;
 
 		cam.ResetCamera();
 
@@ -250,8 +281,6 @@ public class InGame : MonoBehaviour
 
 		for (int currentTime = 0; currentTime < 10; currentTime++)
 		{
-			Debug.Log(string.Format("[{0}/10]", (currentTime + 1).ToString()));
-
 			if (playerInfo[Who.p1].isDead || playerInfo[Who.p2].isDead)
 				break;
 
@@ -262,6 +291,12 @@ public class InGame : MonoBehaviour
 				StartCoroutine(commandList[Who.p1][currentTime].Execute());
 			else
 			{
+				if (!commandList[Who.p1][currentTime].totalDamage.Equals(0))
+				{
+					buffSet[Who.p1].UpdateCount(CountType.tryAttack, -1);
+					StartCoroutine(CheckCommandMissed(commandList[Who.p1][currentTime].time, Who.p1));
+				}
+
 				commandRoutine[Who.p1] = StartCoroutine(commandList[Who.p1][currentTime].Execute());
 				playingCommand[Who.p1] = commandList[Who.p1][currentTime];
 			}
@@ -270,16 +305,34 @@ public class InGame : MonoBehaviour
 				StartCoroutine(commandList[Who.p2][currentTime].Execute());
 			else
 			{
+				if (!commandList[Who.p2][currentTime].totalDamage.Equals(0))
+				{
+					buffSet[Who.p2].UpdateCount(CountType.tryAttack, -1);
+					StartCoroutine(CheckCommandMissed(commandList[Who.p2][currentTime].time, Who.p2));
+				}
+
 				commandRoutine[Who.p2] = StartCoroutine(commandList[Who.p2][currentTime].Execute());
 				playingCommand[Who.p2] = commandList[Who.p2][currentTime];
 			}
+
+			#region 커맨드 빗나감 체크를 위해 playingCommand를 Empty로 바꿔줌
+			if (GetPlayerEndTime(Who.p1).Equals(currentTime))
+			{
+				playingCommand[Who.p1] = commandList[Who.p1][currentTime];
+			}
+
+			if (GetPlayerEndTime(Who.p2).Equals(currentTime))
+			{
+				playingCommand[Who.p2] = commandList[Who.p2][currentTime];
+			}
+			#endregion
 
 			yield return new WaitForSeconds(1f);
 		}
 		playerInfo[Who.p1].SetAnimState(AnimState.idle);
 		playerInfo[Who.p2].SetAnimState(AnimState.idle);
-		buffSet[Who.p1].Clear();
-		buffSet[Who.p2].Clear();
+		buffSet[Who.p1].Clear(true);
+		buffSet[Who.p2].Clear(true);
 
 		yield return new WaitForSeconds(0.5f);
 
@@ -299,6 +352,9 @@ public class InGame : MonoBehaviour
 		if (!canTransform)
 			yield break;
 
+		if (isGameEnd)
+			yield break;
+
 		yield return new WaitForSeconds(cam.ZoomInTarget(playerInfo[who].tr.position));
 		playerInfo[who].SetAnimState(AnimState.innerWildness);
 		yield return new WaitForSeconds(0.5f);
@@ -308,6 +364,21 @@ public class InGame : MonoBehaviour
 		yield return new WaitForSeconds(cam.ZoomOut());
 
 		playerInfo[who].transformCount++;
+	}
+
+	private IEnumerator CheckCommandMissed(int commandTime, Who who)
+	{
+		yield return new WaitForSeconds(commandTime - 0.01f);
+		if (isCommandHit[who].Equals(true))
+		{
+			playerInfo[who].Resource += playerInfo[who].resourceByHit;
+		}
+		else
+		{
+			playerInfo[who].Resource += playerInfo[who].resourceByMiss;
+		}
+
+		isCommandHit[who] = false;
 	}
 
 	private bool IsBattleEnd()
@@ -377,7 +448,7 @@ public class InGame : MonoBehaviour
 
 	private void GetMessage(string json)
 	{
-		Debug.Log("데이터 수신 : " + json);
+		//Debug.Log("데이터 수신 : " + json);
 
 		Msg tempMsg = JsonUtility.FromJson<Msg>(json);
 		switch (tempMsg.type)

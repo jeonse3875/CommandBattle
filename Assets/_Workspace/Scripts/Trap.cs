@@ -3,6 +3,9 @@ using UnityEngine;
 
 public class Trap : MonoBehaviour
 {
+	public CommandId id;
+
+	private Who commander;
 	private Who target;
 	private (int x, int y) pos;
 	private int damage;
@@ -12,6 +15,7 @@ public class Trap : MonoBehaviour
 	private Animator animator;
 	private float timer = 0f;
 	private PlayerInfo targetInfo;
+	private PlayerInfo commanderInfo;
 	private bool canActive = true;
 
 	private LobbyUI lobby;
@@ -25,14 +29,21 @@ public class Trap : MonoBehaviour
 		this.isPreview = isPreview;
 		this.animator = GetComponent<Animator>();
 
-		if(isPreview)
+		if (target.Equals(Who.p1))
+			commander = Who.p2;
+		else
+			commander = Who.p1;
+
+		if (isPreview)
 		{
 			lobby = GameObject.Find("LobbyUI").GetComponent<LobbyUI>();
 			targetInfo = lobby.pre_Enemy;
+			commanderInfo = lobby.pre_Player;
 		}
 		else
 		{
 			targetInfo = InGame.instance.playerInfo[target];
+			commanderInfo = InGame.instance.playerInfo[commander];
 		}
 	}
 

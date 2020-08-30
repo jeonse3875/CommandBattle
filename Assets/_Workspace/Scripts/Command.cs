@@ -105,7 +105,7 @@ public class CommandSet
 
 public enum ClassType
 {
-	common, knight, werewolf, hunter
+	common, knight, werewolf, hunter, witch,
 }
 
 public enum CommandId
@@ -115,9 +115,9 @@ public enum CommandId
 	//기사
 	EarthStrike, WhirlStrike, CombatReady, EarthWave, Charge,
 	//늑대인간
-	Cutting, LeapAttack, InnerWildness, HeartRip,
+	Cutting, LeapAttack, InnerWildness, HeartRip, Vanish,
 	//사냥꾼
-	RapidShot, FlipShot, StartHunting, HunterTrap,
+	RapidShot, FlipShot, StartHunting, HunterTrap, ParalyticArrow,
 }
 
 public class Command
@@ -171,6 +171,39 @@ public class Command
 	public virtual IEnumerator Execute()
 	{
 		yield break;
+	}
+
+	public virtual bool CanUse()
+	{
+		return true;
+	}
+
+	public static string GetKoreanClassName(ClassType cType)
+	{
+		string className = "";
+
+		switch (cType)
+		{
+			case ClassType.common:
+				className = "공용";
+				break;
+			case ClassType.knight:
+				className = "기사";
+				break;
+			case ClassType.werewolf:
+				className = "늑대인간";
+				break;
+			case ClassType.hunter:
+				className = "사냥꾼";
+				break;
+			case ClassType.witch:
+				className = "마녀";
+				break;
+			default:
+				break;
+		}
+
+		return className;
 	}
 
 	public PlayerInfo GetCommanderInfo()
@@ -269,31 +302,6 @@ public class Command
 		return FromId(id);
 	}
 
-	public static string GetKoreanClassName(ClassType cType)
-	{
-		string className = "";
-
-		switch (cType)
-		{
-			case ClassType.common:
-				className = "공용";
-				break;
-			case ClassType.knight:
-				className = "기사";
-				break;
-			case ClassType.werewolf:
-				className = "늑대인간";
-				break;
-			case ClassType.hunter:
-				className = "사냥꾼";
-				break;
-			default:
-				break;
-		}
-
-		return className;
-	}
-
 	public void DisplayAttackRange(List<(int x, int y)> area, float destroyTime)
 	{
 		if (isPreview)
@@ -357,7 +365,7 @@ public class Command
 
 	public int Hit(int damage, bool isMultiple = false)
 	{
-		int realDamage = GetCommanderInfo().DealDamage(damage, isMultiple);
+		int realDamage = GetCommanderInfo().DealDamage(id, damage, isMultiple);
 		BattleLog(string.Format("{0}의 피해", realDamage.ToString()));
 		return realDamage;
 	}
@@ -365,7 +373,7 @@ public class Command
 	public int Hit(int damage, Buff deBuff, bool isMultiple = false)
 	{
 		ApplyBuff(Enemy(), deBuff);
-		int realDamage = GetCommanderInfo().DealDamage(damage, isMultiple);
+		int realDamage = GetCommanderInfo().DealDamage(id, damage, isMultiple);
 		BattleLog(string.Format("{0}의 피해", realDamage.ToString()));
 		return realDamage;
 	}
@@ -439,8 +447,18 @@ public class MoveCommand : Command
 
 		if (targetPos == curPos || targetPos == enemy.Pos())
 		{
-			BattleLog(string.Format("가로막힘", Grid.DirToKorean(dir)));
+			BattleLog("가로막힘");
 			yield break;
+		}
+		else if (player.isParalysis)
+		{
+			BattleLog("마비");
+			player.SetAnimState(AnimState.paralysis);
+			yield break;
+		}
+		else if (player.isVanish)
+		{
+			BattleLog("???");
 		}
 		else
 		{
@@ -465,7 +483,7 @@ public class MoveCommand : Command
 public class GuardCommand : Command
 {
 	public GuardCommand(Direction dir = Direction.right)
-		: base(CommandId.Guard, "방어", 2, 10, 0, DirectionType.none, ClassType.common)
+		: base(CommandId.Guard, "방어", 2, 2, 0, DirectionType.none, ClassType.common)
 	{
 		description = "방어 태세를 취하여 2초 동안 받는 피해를 50% 감소시킵니다.";
 	}
@@ -994,6 +1012,62 @@ public class HeartRipCommand : Command
 	}
 }
 
+public class VanishCommand : Command
+{
+	public VanishCommand(Direction dir = Direction.right)
+		: base(CommandId.Vanish, "은신", 1, 1, 0, DirectionType.none, ClassType.werewolf)
+	{
+		description = "은신 상태에 돌입합니다. 공격 커맨드를 사용하거나 피해를 입으면 은신이 해제됩니다. " +
+			"늑대 상태에서는 은신 해제 후 1초간 주는 피해가 50% 증가합니다.";
+	}
+
+	public override bool CanUse()
+	{
+		return !GetCommanderInfo().isVanish;
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+
+		var effect = GetEffect();
+		effect.transform.position = player.tr.position;
+		effect.Play();
+		SetAnimState(AnimState.vanish);
+		yield return new WaitForSeconds(0.7f);
+		SetAnimState(AnimState.idle);
+
+		if (player.transformCount.Equals(0))
+		{
+			BattleLog("은신");
+
+			Buff vanish = new Buff(BuffCategory.vanish, true);
+			List<CountType> countType = new List<CountType>() { CountType.takeDamage, CountType.tryAttack };
+			vanish.SetCount(countType);
+			vanish.isMultiTurn = true;
+
+			ApplyBuff(commander, vanish);
+		}
+		else
+		{
+			BattleLog("은신");
+
+			Buff vanish = new Buff(BuffCategory.vanish, true);
+			List<CountType> countType = new List<CountType>() { CountType.takeDamage, CountType.tryAttack };
+			vanish.SetCount(countType);
+			vanish.isMultiTurn = true;
+
+			Buff dealDamageIncrease = new Buff(BuffCategory.dealDamage, true, +0.5f);
+			dealDamageIncrease.SetDuration(1f);
+
+			vanish.SetChainBuff(dealDamageIncrease);
+			ApplyBuff(commander, vanish);
+		}
+
+		yield break;
+	}
+}
+
 #endregion
 
 #region 사냥꾼 커맨드
@@ -1034,7 +1108,6 @@ public class RapidShotCommand : Command
 		float duration = 0.3f;
 		float progress = 0f;
 		effect1.Play();
-		effect1.Clear();
 		effect1.transform.DOMove(grid.PosToVec3(attackArea[attackArea.Count - 1]), duration)
 			.SetEase(Ease.OutCubic).OnComplete(() => { effect1.Clear(); effect1.Stop(); });
 		var enemy = GetEnemyInfo();
@@ -1159,6 +1232,59 @@ public class HunterTrapCommand : Command
 		trap.transform.DOMoveZ(vec.z, duration).SetEase(Ease.OutQuad);
 		trap.transform.DOMoveY(0, duration).SetEase(Ease.InSine);
 		yield return new WaitForSeconds(0.55f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
+public class ParalyticArrowCommand : Command
+{
+	public ParalyticArrowCommand(Direction dir = Direction.right)
+		: base(CommandId.ParalyticArrow, "마비 화살", 1, 1, 20, DirectionType.cross, ClassType.hunter)
+	{
+		this.dir = dir;
+		description = "마비를 일으키는 화살을 발사합니다. 적중당한 적은 마비 상태가 되어 3초 동안 '이동' 커맨드를 사용할 수 없습니다. " +
+			"(이동 능력이 있는 다른 커맨드는 사용 가능)";
+		previewPos = ((1, 2), (3, 2));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Grid grid = GetGrid();
+
+		List<(int x, int y)> attackArea = new List<(int x, int y)> { (0, 2) };
+		attackArea = CalculateArea(attackArea, player.Pos(), dir);
+		player.tr.LookAt(grid.PosToVec3(attackArea[0]));
+
+		ParticleSystem effect1 = GetEffect(1);
+		TrailRenderer trail = effect1.GetComponentInChildren<TrailRenderer>();
+		effect1.transform.position = player.tr.position;
+		effect1.transform.LookAt(grid.PosToVec3(attackArea[0]));
+		trail.Clear();
+
+		ParticleSystem effect2 = GetEffect(2);
+
+		Buff paralysis = new Buff(BuffCategory.paralysis, false);
+		paralysis.SetDuration(3f);
+
+		// 수치조정
+		SetAnimState(AnimState.paralyticArrow);
+		DisplayAttackRange(attackArea, 0.48f);
+		yield return new WaitForSeconds(0.48f);
+		effect1.Play();
+		effect1.transform.DOMove(grid.PosToVec3(attackArea[0]), 0.2f)
+			.SetEase(Ease.OutCubic).OnComplete(() => { effect1.Clear(); effect1.Stop(); });
+		yield return new WaitForSeconds(0.1f);
+		if (CheckEnemyInArea(attackArea))
+		{
+			Hit(totalDamage, paralysis);
+			effect2.transform.position = GetEnemyInfo().tr.position;
+			effect2.Play();
+			effect1.Stop();
+			effect1.Clear();
+		}
+		yield return new WaitForSeconds(0.3f);
+
 		SetAnimState(AnimState.idle);
 	}
 }

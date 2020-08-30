@@ -14,4 +14,11 @@ public class Knight : ClassSpecialize
 		player.resourceClamp = (0, 0);
 		player.Resource = 0;
 	}
+
+	public override Buff[] GetPassive()
+	{
+		Buff takeDamageReduce = new Buff(BuffCategory.takeDamage, true, -0.1f);
+
+		return new Buff[] { takeDamageReduce };
+	}
 }

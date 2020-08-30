@@ -360,7 +360,7 @@ public class InGameUI : MonoBehaviour
 
 	private void UpdateCommandButton()
 	{
-		foreach(var button in commandButtons)
+		foreach(CommandButton button in commandButtons)
 		{
 			if (!button.gameObject.activeSelf)
 				break;
@@ -381,10 +381,10 @@ public class InGameUI : MonoBehaviour
 
 			int leftTime = 10 - playerCommandSet.GetTotalTime();
 
-			if (leftLimit.Equals(0) || button.command.time > leftTime)
-				button.button.interactable = false;
-			else
-				button.button.interactable = true;
+			bool canUse = !leftLimit.Equals(0) && button.command.time <= leftTime;
+
+			canUse = canUse && button.command.CanUse();
+			button.button.interactable = canUse;
 		}
 	}
 

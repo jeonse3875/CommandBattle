@@ -11,10 +11,14 @@ public class ResourcePanel : MonoBehaviour
 	private int resource = 0;
 	private bool isActive = false;
 
+	private int lastResource = 0;
 	// werewolf
 	public GameObject werewolfPanel;
-	private int lastEye = 0;
 	public List<Image> eyeList;
+
+	// hunter
+	public GameObject hunterPanel;
+	public List<Image> arrowList;
 
 	private void Update()
 	{
@@ -29,6 +33,7 @@ public class ResourcePanel : MonoBehaviour
 		this.cType = cType;
 
 		image_Background.gameObject.SetActive(true);
+		Color color;
 
 		switch (cType)
 		{
@@ -36,12 +41,14 @@ public class ResourcePanel : MonoBehaviour
 				image_Background.gameObject.SetActive(false);
 				break;
 			case ClassType.werewolf:
-				ColorUtility.TryParseHtmlString("#890000", out Color color);
+				ColorUtility.TryParseHtmlString("#890000", out color);
 				image_Background.color = color;
 				werewolfPanel.SetActive(true);
 				break;
 			case ClassType.hunter:
-				image_Background.gameObject.SetActive(false);
+				ColorUtility.TryParseHtmlString("#06BD5D", out color);
+				image_Background.color = color;
+				hunterPanel.SetActive(true);
 				break;
 			default:
 				image_Background.gameObject.SetActive(false);
@@ -60,13 +67,26 @@ public class ResourcePanel : MonoBehaviour
 			case ClassType.knight:
 				break;
 			case ClassType.werewolf:
-				resource = Mathf.Clamp(resource, 0, 3);
-				if (resource != lastEye)
+				if (resource != lastResource)
 				{
 					for (int i = 0; i < resource; i++)
 						eyeList[i].DOFade(1f, 1.3f);
 				}
-				lastEye = resource;
+				lastResource = resource;
+				break;
+			case ClassType.hunter:
+				resource /= 5;
+				if (resource > lastResource)
+				{
+					for (int i = 0; i < resource; i++)
+						arrowList[i].DOFade(1f, 0.5f);
+				}
+				else if (resource < lastResource)
+				{
+					for (int i = 0; i < arrowList.Count - resource; i++)
+						arrowList[arrowList.Count - 1 - i].DOFade(0.4f, 0.5f);
+				}
+				lastResource = resource;
 				break;
 			default:
 				break;

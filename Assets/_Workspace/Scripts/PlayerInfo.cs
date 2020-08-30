@@ -27,9 +27,13 @@ public class PlayerInfo
 	}
 
 	public float takeDamageMultiplier = 1f;
+	public int takeDamageBonus = 0;
 	public float dealDamageMultiplier = 1f;
+	public int dealDamageBonus = 0;
 	public int resourceByDealDamage = 0;
 	public int resourceByTakeDamage = 0;
+	public int resourceByMiss = 0;
+	public int resourceByHit = 0;
 
 	public Transform tr;
 	public Animator animator;
@@ -37,6 +41,9 @@ public class PlayerInfo
 	public bool isDead = false;
 	public int transformCount = 0;
 	public bool isUnstoppable = false;
+	public bool isParalysis = false;
+	public bool isVanish = false;
+	public bool canResourceToBonusDamage = false;
 
 	public PlayerInfo(Who who, (int x, int y) pos, Transform tr)
 	{
@@ -86,7 +93,7 @@ public class PlayerInfo
 		if (isDead)
 			return 0;
 
-		int takenDamage = Mathf.RoundToInt(damage * takeDamageMultiplier);
+		int takenDamage = Mathf.RoundToInt(damage * takeDamageMultiplier) + takeDamageBonus;
 		int mode;
 
 		if (takenDamage > originDamage)
@@ -122,7 +129,7 @@ public class PlayerInfo
 		return takenDamage;
 	}
 
-	public int DealDamage(int originDamage, bool isMultiple = false)
+	public int DealDamage(CommandId id, int originDamage, bool isMultiple = false)
 	{
 		int realDamage;
 		if (isPreview)
@@ -131,12 +138,17 @@ public class PlayerInfo
 		}
 		else
 		{
-			int damage = Mathf.RoundToInt(originDamage * dealDamageMultiplier);
+			int damage = Mathf.RoundToInt(originDamage * dealDamageMultiplier) + dealDamageBonus;
+			if (canResourceToBonusDamage)
+				damage += Resource;
 
 			realDamage = InGame.instance.playerInfo[enemy].TakeDamage(damage, originDamage, isMultiple);
 			InGame.instance.buffSet[me].UpdateCount(CountType.dealDamage, -1);
 
 			Resource += resourceByDealDamage;
+
+			if (InGame.instance.playingCommand[me].id.Equals(id))
+				InGame.instance.isCommandHit[me] = true;
 		}
 
 		return realDamage;
@@ -150,9 +162,19 @@ public class PlayerInfo
 		}
 		else
 		{
-			InGame.instance.InstantiateDamageTMP(tr, amount.ToString(), -2);
+			amount = Mathf.Clamp(amount, 0, maxHP - HP);
 			HP += amount;
 			InGame.instance.inGameUI.UpdateHealth(me);
+
+			if (isVanish && !InGame.instance.me.Equals(me))
+			{
+
+			}
+			else
+			{
+				InGame.instance.InstantiateDamageTMP(tr, amount.ToString(), -2);
+
+			}
 		}
 
 		return amount;
@@ -186,5 +208,6 @@ public enum AnimState
 	idle = 0, run = 1, earthStrike = 2, death = 3, whirlStrike = 4, stiff = 5, guard = 6,
 	combatReady = 7, cutting = 8, scratch = 9, leapAttack = 10, innerWildness = 11,
 	winner = 12, earthWave = 13, heartRip = 14, healPotion = 15, charge = 16,
-	rapidShot = 17, flipShot = 18, startHunting = 19, hunterTrap = 20,
+	rapidShot = 17, flipShot = 18, startHunting = 19, hunterTrap = 20, paralyticArrow = 21,
+	paralysis = 22, vanish = 23,
 }

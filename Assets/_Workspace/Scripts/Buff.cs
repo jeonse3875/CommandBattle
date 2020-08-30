@@ -43,21 +43,36 @@ public class BuffSet
 	{
 		foreach (var buff in buffList)
 		{
-			if (buff.buffType.Equals(BuffType.count) && buff.countType.Equals(countType))
+			if (buff.buffType.Equals(BuffType.count) && buff.countType.Contains(countType))
 			{
 				buff.leftCount += change;
 			}
 		}
 	}
 
-	public void Clear()
+	public void Clear(bool exceptMultiTurn = false)
 	{
+		List<Buff> removeList = new List<Buff>();
+
 		foreach (var buff in buffList)
 		{
+			if (exceptMultiTurn && buff.isMultiTurn)
+				continue;
+
+			if (buff.isPassive)
+				continue;
+			
 			if (buff.isApplied)
+			{
 				buff.Release(player);
+				removeList.Add(buff);
+			}
 		}
-		buffList.Clear();
+
+		foreach(var buff in removeList)
+		{
+			buffList.Remove(buff);
+		}
 	}
 }
 
@@ -78,8 +93,13 @@ public class Buff
 
 	public float leftDuration;
 
-	public CountType countType;
+	public List<CountType> countType;
 	public int leftCount;
+
+	public bool isMultiTurn = false;
+
+	private bool hasChainBuff = false;
+	private Buff chainBuff;
 
 	private GameObject effectObj;
 
@@ -113,8 +133,21 @@ public class Buff
 	public void SetCount(CountType countType, int count = 1)
 	{
 		this.buffType = BuffType.count;
+		this.countType = new List<CountType>() { countType };
+		this.leftCount = count;
+	}
+
+	public void SetCount(List<CountType> countType, int count = 1)
+	{
+		this.buffType = BuffType.count;
 		this.countType = countType;
 		this.leftCount = count;
+	}
+
+	public void SetChainBuff(Buff chainBuff)
+	{
+		this.chainBuff = chainBuff;
+		this.hasChainBuff = true;
 	}
 
 	public void Apply(PlayerInfo player)
@@ -163,19 +196,65 @@ public class Buff
 				}
 				else
 					player.SetAnimState(AnimState.stiff);
-
 				break;
 			case BuffCategory.gainResourceByDealDamage:
-				player.resourceByDealDamage += Mathf.RoundToInt(amount_Int);
+				player.resourceByDealDamage += amount_Int;
 				break;
 			case BuffCategory.gainResourceByTakeDamage:
-				player.resourceByTakeDamage += Mathf.RoundToInt(amount_Int);
+				player.resourceByTakeDamage += amount_Int;
 				break;
 			case BuffCategory.unStoppable:
 				player.isUnstoppable = true;
 				break;
+			case BuffCategory.paralysis:
+				player.isParalysis = true;
+				break;
+			case BuffCategory.vanish:
+				player.isVanish = true;
+				player.specialize.Vanish();
+				if (isPreview)
+				{
+					effectObj.transform.position = player.tr.position;
+					effectObj.GetComponent<FollowPlayer>().target = player.tr;
+				}
+				else
+				{
+					if (InGame.instance.me.Equals(player.me))
+					{
+						effectObj.transform.position = player.tr.position;
+						effectObj.GetComponent<FollowPlayer>().target = player.tr;
+					}
+					else
+					{
+						effectObj.SetActive(false);
+						InGame.instance.particles[player.me].gameObject.SetActive(false);
+						foreach(var effect in InGame.instance.effectObj[player.me])
+						{
+							if (effect != null)
+								effect.SetActive(false);
+						}
+					}
+				}
+				break;
+			case BuffCategory.gainResourceByMiss:
+				player.resourceByMiss += amount_Int;
+				break;
+			case BuffCategory.gainResourceByHit:
+				player.resourceByHit += amount_Int;
+				break;
+			case BuffCategory.resourceToBonusDamage:
+				player.canResourceToBonusDamage = true;
+				break;
 			default:
 				break;
+		}
+
+		if (player.isVanish && !category.Equals(BuffCategory.vanish))
+			effectObj.SetActive(false);
+
+		if (effectObj != null && !isPreview)
+		{
+			InGame.instance.effectObj[player.me].Add(effectObj);
 		}
 
 		if (buffType.Equals(BuffType.count) && countType.Equals(CountType.instant))
@@ -217,28 +296,73 @@ public class Buff
 			case BuffCategory.stiff:
 				break;
 			case BuffCategory.gainResourceByDealDamage:
-				player.resourceByDealDamage -= Mathf.RoundToInt(amount_Percentage);
+				player.resourceByDealDamage -= amount_Int;
 				break;
 			case BuffCategory.gainResourceByTakeDamage:
-				player.resourceByTakeDamage -= Mathf.RoundToInt(amount_Percentage);
+				player.resourceByTakeDamage -= amount_Int;
 				break;
 			case BuffCategory.unStoppable:
 				player.isUnstoppable = true;
+				break;
+			case BuffCategory.paralysis:
+				player.isParalysis = false;
+				break;
+			case BuffCategory.vanish:
+				player.isVanish = false;
+				player.specialize.UnVanish();
+				if (!isPreview)
+				{
+					if (InGame.instance.me.Equals(player.me))
+					{
+
+					}
+					else
+					{
+						InGame.instance.particles[player.me].gameObject.SetActive(true);
+						foreach (var effect in InGame.instance.effectObj[player.me])
+						{
+							if (effect != null)
+								effect.SetActive(true);
+						}
+					}
+				}
+				break;
+			case BuffCategory.gainResourceByMiss:
+				player.resourceByMiss -= amount_Int;
+				break;
+			case BuffCategory.gainResourceByHit:
+				player.resourceByHit -= amount_Int;
+				break;
+			case BuffCategory.resourceToBonusDamage:
+				player.canResourceToBonusDamage = false;
 				break;
 			default:
 				break;
 		}
 
 		isEnd = true;
+
 		if (effectObj != null)
+		{
+			if (!isPreview)
+				InGame.instance.effectObj[player.me].Remove(effectObj);
 			InGame.DestroyObj(effectObj);
+		}
+
+		if (hasChainBuff && chainBuff != null)
+		{
+			if (!isPreview)
+			{
+				InGame.instance.chainBuffList[player.me].Add(chainBuff);
+			}
+		}
 	}
 }
 
 public enum BuffCategory
 {
 	takeDamage, dealDamage, stiff, gainResourceByTakeDamage, gainResourceByDealDamage,
-	unStoppable
+	unStoppable, paralysis, vanish, gainResourceByMiss, gainResourceByHit, resourceToBonusDamage,
 }
 
 public enum BuffType
@@ -248,5 +372,5 @@ public enum BuffType
 
 public enum CountType
 {
-	instant, takeDamage, dealDamage
+	instant, takeDamage, dealDamage, tryAttack
 }

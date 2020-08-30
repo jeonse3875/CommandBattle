@@ -19529,6 +19529,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   weapon:
   - {fileID: 6349951978381049222}
+  weapon_Transform:
+  - {fileID: 6349951978381049222}
+  visiblePart: {fileID: 4806513515982149223}
+  body: {fileID: 4806513515982149223}
+  body_Transform: {fileID: 4806513515982149223}
 --- !u!1 &4805868081998863703
 GameObject:
   m_ObjectHideFlags: 0

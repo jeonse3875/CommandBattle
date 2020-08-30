@@ -2,10 +2,6 @@
 
 public class Werewolf : ClassSpecialize
 {
-    public GameObject model_Human;
-    public GameObject model_Wolf;
-    public GameObject weapon_Human;
-
     public override void Initialize()
     {
         base.Initialize();
@@ -25,19 +21,5 @@ public class Werewolf : ClassSpecialize
         player.HP = 200;
         player.resourceClamp = (0, 3);
         player.Resource = 0;
-    }
-
-    public override void DeTransform()
-    {
-        model_Wolf.SetActive(false);
-        model_Human.SetActive(true);
-        weapon_Human.SetActive(true);
-    }
-
-    public override void Transform()
-    {
-        model_Wolf.SetActive(true);
-        model_Human.SetActive(false);
-        weapon_Human.SetActive(false);
     }
 }
