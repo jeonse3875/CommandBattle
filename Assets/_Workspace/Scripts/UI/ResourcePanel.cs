@@ -12,6 +12,7 @@ public class ResourcePanel : MonoBehaviour
 	private bool isActive = false;
 
 	private int lastResource = 0;
+
 	// werewolf
 	public GameObject werewolfPanel;
 	public List<Image> eyeList;
@@ -19,6 +20,10 @@ public class ResourcePanel : MonoBehaviour
 	// hunter
 	public GameObject hunterPanel;
 	public List<Image> arrowList;
+
+	// witch
+	public GameObject witchPanel;
+	public List<Image> magicList;
 
 	private void Update()
 	{
@@ -49,6 +54,11 @@ public class ResourcePanel : MonoBehaviour
 				ColorUtility.TryParseHtmlString("#06BD5D", out color);
 				image_Background.color = color;
 				hunterPanel.SetActive(true);
+				break; 
+			case ClassType.witch:
+				ColorUtility.TryParseHtmlString("#9438A3", out color);
+				image_Background.color = color;
+				witchPanel.SetActive(true);
 				break;
 			default:
 				image_Background.gameObject.SetActive(false);
@@ -84,7 +94,20 @@ public class ResourcePanel : MonoBehaviour
 				else if (resource < lastResource)
 				{
 					for (int i = 0; i < arrowList.Count - resource; i++)
-						arrowList[arrowList.Count - 1 - i].DOFade(0.4f, 0.5f);
+						arrowList[arrowList.Count - 1 - i].DOFade(0.3f, 0.5f);
+				}
+				lastResource = resource;
+				break;
+			case ClassType.witch:
+				if (resource > lastResource)
+				{
+					for (int i = 0; i < resource; i++)
+						magicList[i].DOFade(1f, 0.5f);
+				}
+				else if (resource < lastResource)
+				{
+					for (int i = 0; i < magicList.Count - resource; i++)
+						magicList[magicList.Count - 1 - i].DOFade(0.3f, 0.5f);
 				}
 				lastResource = resource;
 				break;

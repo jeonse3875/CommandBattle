@@ -68,6 +68,8 @@ public class InGameUI : MonoBehaviour
 
 	public List<Image> pushedCommandList;
 
+	private int curResource = 0;
+
 	private void Update()
 	{
 		if (isTimerActive)
@@ -165,6 +167,7 @@ public class InGameUI : MonoBehaviour
 	{
 		group_Introduce.SetActive(false);
 		playerCommandSet = new CommandSet();
+		curResource = InGame.instance.playerInfo[InGame.instance.me].Resource;
 		UpdateCapacity();
 		InitializeCommandButton();
 		UpdateCommandButton();
@@ -381,7 +384,11 @@ public class InGameUI : MonoBehaviour
 
 			int leftTime = 10 - playerCommandSet.GetTotalTime();
 
-			bool canUse = !leftLimit.Equals(0) && button.command.time <= leftTime;
+			bool isLimitLeft = !leftLimit.Equals(0);
+			bool isTimeLeft = button.command.time <= leftTime;
+			bool isCostLeft = button.command.costResource <= (curResource - playerCommandSet.GetTotalCost());
+
+			bool canUse = isLimitLeft && isTimeLeft && isCostLeft;
 
 			canUse = canUse && button.command.CanUse();
 			button.button.interactable = canUse;

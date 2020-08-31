@@ -72,6 +72,17 @@ public class CommandSet
 		return totalTime;
 	}
 
+	public int GetTotalCost()
+	{
+		int totalCost = 0;
+		foreach (var command in commandList)
+		{
+			totalCost += command.costResource;
+		}
+
+		return totalCost;
+	}
+
 	public CommandCompleteMsg ToCCM()
 	{
 		CommandCompleteMsg ccm = new CommandCompleteMsg();
@@ -118,6 +129,8 @@ public enum CommandId
 	Cutting, LeapAttack, InnerWildness, HeartRip, Vanish,
 	//사냥꾼
 	RapidShot, FlipShot, StartHunting, HunterTrap, ParalyticArrow,
+	//마녀
+	CurseStiff, CursePoison, SpellFireExplosion, SpellLightning,
 }
 
 public class Command
@@ -129,6 +142,7 @@ public class Command
 	public int time;
 	public int limit;
 	public int totalDamage;
+	public int costResource = 0;
 	public DirectionType dirType;
 	public ClassType classType;
 
@@ -243,6 +257,14 @@ public class Command
 			if (enemyPos == pos)
 				return true;
 		}
+		return false;
+	}
+
+	public bool CheckEnemyInArea((int x, int y) area)
+	{
+		(int x, int y) enemyPos = GetEnemyInfo().Pos();
+		if (enemyPos == area)
+			return true;
 		return false;
 	}
 
@@ -388,7 +410,7 @@ public class Command
 	public GameObject SetTrap((int x, int y) pos, Who target, int damage, Buff deBuff = null)
 	{
 		GameObject trap;
-		if(isPreview)
+		if (isPreview)
 		{
 			LobbyUI lobby = GameObject.Find("LobbyUI").GetComponent<LobbyUI>();
 			trap = lobby.InstantiateTrap(id);
@@ -507,7 +529,7 @@ public class GuardCommand : Command
 public class HealPotionCommand : Command
 {
 	public HealPotionCommand(Direction dir = Direction.right)
-		: base(CommandId.HealPotion,"회복 포션",1,1,0,DirectionType.none,ClassType.common)
+		: base(CommandId.HealPotion, "회복 포션", 1, 1, 0, DirectionType.none, ClassType.common)
 	{
 		description = "비상용 회복 포션을 마셔 체력을 20 회복합니다.";
 	}
@@ -575,7 +597,7 @@ public class EarthStrikeCommand : Command
 public class WhirlStrikeCommand : Command
 {
 	public WhirlStrikeCommand(Direction dir = Direction.right)
-		: base(CommandId.WhirlStrike, "회오리 타격", 1, 3, 25, DirectionType.none, ClassType.knight)
+		: base(CommandId.WhirlStrike, "회오리 타격", 1, 3, 20, DirectionType.none, ClassType.knight)
 	{
 		description = "칼을 휘둘러 주변의 적을 공격합니다.";
 		previewPos = ((2, 2), (3, 2));
@@ -696,7 +718,7 @@ public class EarthWaveCommand : Command
 public class ChargeCommand : Command
 {
 	public ChargeCommand(Direction dir = Direction.right)
-		: base(CommandId.Charge, "돌진", 3, 1, 60, DirectionType.cross, ClassType.knight)
+		: base(CommandId.Charge, "돌진", 3, 1, 50, DirectionType.cross, ClassType.knight)
 	{
 		this.dir = dir;
 		description = "3칸 돌진합니다. 부딪힌 적에게 피해를 입히고 자신도 반동 피해를 입습니다. " +
@@ -729,7 +751,7 @@ public class ChargeCommand : Command
 		effect.Play();
 
 		float progress = 0f;
-		while(progress < endTime)
+		while (progress < endTime)
 		{
 			effect.transform.position = player.tr.position;
 			if (enemy.Pos().Equals(player.Pos()))
@@ -738,7 +760,7 @@ public class ChargeCommand : Command
 				Hit(totalDamage, stiff);
 				movingTween.Kill();
 				player.TakeDamage(20, 20);
-				
+
 				player.tr.LookAt(enemy.tr);
 				player.SetAnimState(AnimState.stiff);
 				var playerBackPos = grid.SwitchDir((0, -1), dir);
@@ -794,7 +816,7 @@ public class CuttingCommand : Command
 			// 수치조정
 			int damage = this.totalDamage;
 			SetAnimState(AnimState.cutting);
-			DisplayAttackRange(attackArea, 0.28f);
+			DisplayAttackRange(attackArea, 0.33f);
 			yield return new WaitForSeconds(0.33f);
 			if (CheckEnemyInArea(attackArea))
 			{
@@ -814,7 +836,7 @@ public class CuttingCommand : Command
 			// 수치조정
 			int damage = this.totalDamage;
 			SetAnimState(AnimState.scratch);
-			DisplayAttackRange(attackArea, 0.28f);
+			DisplayAttackRange(attackArea, 0.33f);
 			yield return new WaitForSeconds(0.33f);
 			if (CheckEnemyInArea(attackArea))
 			{
@@ -1096,7 +1118,7 @@ public class RapidShotCommand : Command
 		effect1.transform.position = player.tr.position;
 		effect1.transform.LookAt(grid.PosToVec3(attackArea[0]));
 		trail.Clear();
-		
+
 		ParticleSystem effect2 = GetEffect(2);
 
 		// 수치조정
@@ -1205,7 +1227,7 @@ public class HunterTrapCommand : Command
 		this.dir = dir;
 		description = "밟으면 피해를 입고 경직 상태가 되는 덫을 설치합니다. " +
 			"덫은 턴이 끝나도 유지되고 자신은 밟지 않습니다. 모든 방향으로 사용이 가능합니다.";
-		previewPos = ((2, 2), (3, 2));
+		previewPos = ((1, 2), (2, 2));
 	}
 
 	public override IEnumerator Execute()
@@ -1239,11 +1261,11 @@ public class HunterTrapCommand : Command
 public class ParalyticArrowCommand : Command
 {
 	public ParalyticArrowCommand(Direction dir = Direction.right)
-		: base(CommandId.ParalyticArrow, "마비 화살", 1, 1, 20, DirectionType.cross, ClassType.hunter)
+		: base(CommandId.ParalyticArrow, "마비 화살", 1, 1, 20, DirectionType.all, ClassType.hunter)
 	{
 		this.dir = dir;
 		description = "마비를 일으키는 화살을 발사합니다. 적중당한 적은 마비 상태가 되어 3초 동안 '이동' 커맨드를 사용할 수 없습니다. " +
-			"(이동 능력이 있는 다른 커맨드는 사용 가능)";
+			"(이동 능력이 있는 다른 커맨드는 사용 가능) 모든 방향으로 사용이 가능합니다.";
 		previewPos = ((1, 2), (3, 2));
 	}
 
@@ -1269,10 +1291,10 @@ public class ParalyticArrowCommand : Command
 
 		// 수치조정
 		SetAnimState(AnimState.paralyticArrow);
-		DisplayAttackRange(attackArea, 0.48f);
-		yield return new WaitForSeconds(0.48f);
+		DisplayAttackRange(attackArea, 0.43f);
+		yield return new WaitForSeconds(0.43f);
 		effect1.Play();
-		effect1.transform.DOMove(grid.PosToVec3(attackArea[0]), 0.2f)
+		effect1.transform.DOMove(grid.PosToVec3(attackArea[0]), 0.15f)
 			.SetEase(Ease.OutCubic).OnComplete(() => { effect1.Clear(); effect1.Stop(); });
 		yield return new WaitForSeconds(0.1f);
 		if (CheckEnemyInArea(attackArea))
@@ -1283,8 +1305,178 @@ public class ParalyticArrowCommand : Command
 			effect1.Stop();
 			effect1.Clear();
 		}
-		yield return new WaitForSeconds(0.3f);
+		yield return new WaitForSeconds(0.35f);
 
+		SetAnimState(AnimState.idle);
+	}
+}
+
+#endregion
+
+#region 마녀 커맨드
+
+public class CurseStiffCommand : Command
+{
+	public CurseStiffCommand(Direction dir = Direction.right)
+		: base(CommandId.CurseStiff, "저주 - 경직", 1, 1, 0, DirectionType.none, ClassType.witch)
+	{
+		description = "적에게 경직 저주를 겁니다. 저주에 걸린 즉시 경직 상태가 됩니다.";
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		PlayerInfo enemy = GetEnemyInfo();
+		SetAnimState(AnimState.curseStiff);
+		player.tr.LookAt(enemy.tr);
+
+		yield return new WaitForSeconds(0.2f);
+		var effect = GetEffect();
+		effect.transform.position = enemy.tr.position;
+		effect.Play();
+
+		Buff stiff = new Buff(BuffCategory.stiff, false);
+		stiff.SetCount(CountType.instant);
+		ApplyBuff(Enemy(), stiff);
+		player.Resource++;
+
+		BattleLog("경직시킴");
+		yield return new WaitForSeconds(0.75f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
+public class CursePoisonCommand : Command
+{
+	public CursePoisonCommand(Direction dir = Direction.right)
+		: base(CommandId.CursePoison, "저주 - 중독", 2, 1, 0, DirectionType.cross, ClassType.witch)
+	{
+		this.dir = dir;
+		description = "범위 안의 적에게 중독 저주를 겁니다. 중독 상태의 적은 배틀이 끝날 때마다 피해를 입습니다.";
+		previewPos = ((1, 2), (3, 2));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+
+		List<(int x, int y)> attackArea = new List<(int x, int y)>()
+		{ (0,2),(-1,1),(1,1),(-1,3),(1,3) };
+
+		attackArea = CalculateArea(attackArea, player.Pos(), dir);
+
+		var targetVec = GetGrid().PosToVec3(attackArea[0]);
+		player.tr.LookAt(targetVec);
+
+		Buff poison = new Buff(BuffCategory.poison, false, 1);
+		poison.SetCount(CountType.permanent);
+		poison.isMultiTurn = true;
+
+		var effect = GetEffect();
+
+		SetAnimState(AnimState.cursePoison);
+		DisplayAttackRange(attackArea, 0.35f);
+		yield return new WaitForSeconds(0.35f);
+		effect.transform.position = targetVec;
+		effect.Play();
+		if (CheckEnemyInArea(attackArea))
+		{
+			ApplyBuff(Enemy(), poison);
+			player.Resource++;
+		}
+
+		yield return new WaitForSeconds(0.6f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
+public class SpellFireExplosionCommand : Command
+{
+	public SpellFireExplosionCommand(Direction dir = Direction.right)
+		: base(CommandId.SpellFireExplosion, "마법 - 화염 폭발", 2, 1, 60, DirectionType.cross, ClassType.witch)
+	{
+		this.dir = dir;
+		costResource = 2;
+		description = string.Format("마력 {0} 필요. 전방의 넓은 범위에 화염 폭발을 일으킵니다.", costResource.ToString());
+		previewPos = ((1, 2), (3, 2));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+
+		List<(int x, int y)> attackArea = new List<(int x, int y)>()
+		{ (0,2),(0,1),(0,3),(-1,1),(-1,2),(-1,3),(1,1),(1,2),(1,3) };
+
+		attackArea = CalculateArea(attackArea, player.Pos(), dir);
+
+		var targetVec = GetGrid().PosToVec3(attackArea[0]);
+
+		var effect = GetEffect();
+		effect.transform.position = targetVec;
+
+		yield return new WaitForSeconds(0.2f);
+		player.tr.LookAt(targetVec);
+		SetAnimState(AnimState.spellFireExplosion);
+		DisplayAttackRange(attackArea, 0.4f);
+		yield return new WaitForSeconds(0.4f);
+		effect.Play();
+		if (CheckEnemyInArea(attackArea))
+		{
+			Hit(totalDamage);
+		}
+		yield return new WaitForSeconds(0.4f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
+public class SpellLightningCommand : Command
+{
+	public SpellLightningCommand(Direction dir = Direction.right)
+		: base(CommandId.SpellLightning, "마법 - 낙뢰", 2, 1, 120, DirectionType.all, ClassType.witch)
+	{
+		this.dir = dir;
+		costResource = 5;
+		description = string.Format("마력 {0} 필요. 전방에 세 번 연속으로 번개를 떨어뜨려 강한 피해를 입힙니다.", costResource.ToString());
+		previewPos = ((0, 2), (3, 2));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Grid grid = GetGrid();
+
+		List<(int x, int y)> attackArea = new List<(int x, int y)>() { (0,1),(0,2),(0,3) };
+		attackArea = CalculateArea(attackArea, player.Pos(), dir);
+		var targetVec = grid.PosToVec3(attackArea[0]);
+		player.tr.LookAt(targetVec);
+
+		var effect = GetEffect();
+
+		SetAnimState(AnimState.spellLightning);
+		DisplayAttackRange(attackArea, 0.46f);
+		yield return new WaitForSeconds(0.46f);
+		effect.transform.position = targetVec;
+		effect.Play();
+		if (CheckEnemyInArea(attackArea[0]))
+		{
+			Hit(totalDamage);
+		}
+		yield return new WaitForSeconds(0.35f);
+		effect.transform.position = grid.PosToVec3(attackArea[1]);
+		effect.Play();
+		if (CheckEnemyInArea(attackArea[1]))
+		{
+			Hit(totalDamage);
+		}
+		yield return new WaitForSeconds(0.35f);
+		effect.transform.position = grid.PosToVec3(attackArea[2]);
+		effect.Play();
+		if (CheckEnemyInArea(attackArea[2]))
+		{
+			Hit(totalDamage);
+		}
+		yield return new WaitForSeconds(0.7f);
 		SetAnimState(AnimState.idle);
 	}
 }

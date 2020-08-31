@@ -44,6 +44,7 @@ public class PlayerInfo
 	public bool isParalysis = false;
 	public bool isVanish = false;
 	public bool canResourceToBonusDamage = false;
+	public int poisonCount = 0;
 
 	public PlayerInfo(Who who, (int x, int y) pos, Transform tr)
 	{
@@ -209,5 +210,6 @@ public enum AnimState
 	combatReady = 7, cutting = 8, scratch = 9, leapAttack = 10, innerWildness = 11,
 	winner = 12, earthWave = 13, heartRip = 14, healPotion = 15, charge = 16,
 	rapidShot = 17, flipShot = 18, startHunting = 19, hunterTrap = 20, paralyticArrow = 21,
-	paralysis = 22, vanish = 23,
+	paralysis = 22, vanish = 23, curseStiff = 24, cursePoison = 25, spellFireExplosion = 26,
+	spellLightning = 27,
 }

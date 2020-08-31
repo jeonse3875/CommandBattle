@@ -43,6 +43,7 @@ public class LobbyUI : MonoBehaviour
 	public GameObject tap;
 	public Transform commandListScrollParentTr;
 	public GameObject commandListScroll;
+	public GameObject passiveBlock;
 	public GameObject commandInfoBlock;
 	public Transform mountedListScrollParentTr;
 	public GameObject mountedListScroll;
@@ -65,6 +66,15 @@ public class LobbyUI : MonoBehaviour
 	public Text text_DetailTime;
 	public Text text_DetailLimit;
 	public Text text_DetailDamage;
+
+	public GameObject group_PassiveDetail;
+	public GameObject characterPreviewCamera;
+	private GameObject characterPreviewObj;
+	public Image image_PDetail_ClassIcon;
+	public Text text_PDetailClassName;
+	public Text text_PDetailHP;
+	public Text text_PassiveName;
+	public TextMeshProUGUI text_PassiveDescription;
 
 	public GameObject pre_AttackRange;
 	public Grid pre_Grid;
@@ -251,6 +261,14 @@ public class LobbyUI : MonoBehaviour
 
 	#endregion
 
+	public void SetCharacterPreview(ClassType cType)
+	{
+		characterPreviewObj = Instantiate(Resources.Load<GameObject>(string.Format("Character/{0}_Blue", cType.ToString())));
+		characterPreviewObj.transform.position = new Vector3(-100f, 0, 0);
+		characterPreviewObj.GetComponent<ClassSpecialize>().Initialize();
+		characterPreviewCamera.SetActive(true);
+	}
+
 	#region Button
 
 	public void Button_StartRandomMatchMaking()
@@ -331,6 +349,14 @@ public class LobbyUI : MonoBehaviour
 
 
 		ResetPreview();
+	}
+
+	public void Button_ClosePDetail()
+	{
+		group_PassiveDetail.SetActive(false);
+		characterPreviewCamera.SetActive(false);
+		if (characterPreviewObj != null)
+			Destroy(characterPreviewObj);
 	}
 
 	public void Button_CloseError()
@@ -415,6 +441,14 @@ public class LobbyUI : MonoBehaviour
 			commandListObjDic[cType] = commandListObj;
 
 			Transform contentTr = commandListObj.transform.GetChild(0).GetChild(0);
+			if (!cType.Equals(ClassType.common))
+			{
+				var passiveBlockObj = Instantiate(passiveBlock, contentTr);
+				passiveBlockObj.name = cType.ToString() + "Passive";
+				var passive = passiveBlockObj.GetComponent<PassiveBlock>();
+				passive.SetBlock(cType);
+			}
+
 			foreach (CommandId id in UserInfo.instance.ownCommands[cType])
 			{
 				Command command = Command.FromId(id);

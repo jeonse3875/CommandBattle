@@ -245,12 +245,20 @@ public class Buff
 			case BuffCategory.resourceToBonusDamage:
 				player.canResourceToBonusDamage = true;
 				break;
+			case BuffCategory.poison:
+				player.poisonCount += amount_Int;
+				effectObj.transform.position = player.tr.position;
+				effectObj.GetComponent<FollowPlayer>().target = player.tr;
+				break;
 			default:
 				break;
 		}
 
 		if (player.isVanish && !category.Equals(BuffCategory.vanish))
 			effectObj.SetActive(false);
+
+		if (isPassive)
+			InGame.DestroyObj(effectObj);
 
 		if (effectObj != null && !isPreview)
 		{
@@ -336,6 +344,9 @@ public class Buff
 			case BuffCategory.resourceToBonusDamage:
 				player.canResourceToBonusDamage = false;
 				break;
+			case BuffCategory.poison:
+				player.poisonCount -= amount_Int;
+				break;
 			default:
 				break;
 		}
@@ -363,6 +374,7 @@ public enum BuffCategory
 {
 	takeDamage, dealDamage, stiff, gainResourceByTakeDamage, gainResourceByDealDamage,
 	unStoppable, paralysis, vanish, gainResourceByMiss, gainResourceByHit, resourceToBonusDamage,
+	poison,
 }
 
 public enum BuffType
@@ -372,5 +384,5 @@ public enum BuffType
 
 public enum CountType
 {
-	instant, takeDamage, dealDamage, tryAttack
+	instant, takeDamage, dealDamage, tryAttack, permanent
 }

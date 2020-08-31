@@ -336,6 +336,17 @@ public class InGame : MonoBehaviour
 
 		yield return new WaitForSeconds(0.5f);
 
+		if(playerInfo[Who.p1].poisonCount>0)
+		{
+			int poisonDamage = 10 * playerInfo[Who.p1].poisonCount;
+			playerInfo[Who.p1].TakeDamage(poisonDamage, poisonDamage);
+		}
+		if (playerInfo[Who.p2].poisonCount > 0)
+		{
+			int poisonDamage = 10 * playerInfo[Who.p2].poisonCount;
+			playerInfo[Who.p2].TakeDamage(poisonDamage, poisonDamage);
+		}
+
 		yield return StartCoroutine(WerewolfTransform(Who.p1));
 		yield return StartCoroutine(WerewolfTransform(Who.p2));
 
