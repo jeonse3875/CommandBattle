@@ -73,6 +73,14 @@ public class Grid
 			return (pos1.x + pos2.x, pos1.y + pos2.y);
 	}
 
+	public (int x, int y) SubtractPos((int x, int y) pos1, (int x, int y) pos2, bool isClamp = false)
+	{
+		if (isClamp)
+			return ClampPos((pos1.x - pos2.x, pos1.y - pos2.y));
+		else
+			return (pos1.x - pos2.x, pos1.y - pos2.y);
+	}
+
 	public int DistancePos((int x, int y) pos1, (int x, int y) pos2)
 	{
 		return Mathf.Abs(pos1.x - pos2.x) + Mathf.Abs(pos1.y - pos2.y);
@@ -143,6 +151,20 @@ public class Grid
 		}
 
 		return str;
+	}
+
+	public static Direction OppositeDir(Direction dir)
+	{
+		return (Direction)(((int)dir + 4) % 8);
+	}
+
+	public static Direction PosToDir((int x,int y)pos)
+	{
+		List<(int x, int y)> posList = new List<(int x, int y)>()
+		{ (0,1),(1,1),(1,0),(1,-1),(0,-1),(-1,-1),(-1,0),(-1,1)};
+		int index = posList.IndexOf(pos);
+
+		return (Direction)index;
 	}
 }
 

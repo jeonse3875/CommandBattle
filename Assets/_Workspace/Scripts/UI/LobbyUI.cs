@@ -195,9 +195,9 @@ public class LobbyUI : MonoBehaviour
 
 	private IEnumerator Preview()
 	{
-		WaitForSeconds wait0 = new WaitForSeconds(0.7f);
+		WaitForSeconds wait0 = new WaitForSeconds(0.5f);
 		WaitForSeconds wait1 = new WaitForSeconds(pre_Command.time);
-		WaitForSeconds wait2 = new WaitForSeconds(0.7f);
+		WaitForSeconds wait2 = new WaitForSeconds(1.2f);
 		pre_Player.transformCount = 1;
 
 		while (true)

@@ -130,7 +130,7 @@ public enum CommandId
 	//사냥꾼
 	RapidShot, FlipShot, StartHunting, HunterTrap, ParalyticArrow,
 	//마녀
-	CurseStiff, CursePoison, SpellFireExplosion, SpellLightning,
+	CurseStiff, CursePoison, CursePuppet, SpellFireExplosion, SpellLightning, EscapeSpell,
 }
 
 public class Command
@@ -505,22 +505,22 @@ public class MoveCommand : Command
 public class GuardCommand : Command
 {
 	public GuardCommand(Direction dir = Direction.right)
-		: base(CommandId.Guard, "방어", 2, 2, 0, DirectionType.none, ClassType.common)
+		: base(CommandId.Guard, "방어", 1, 10, 0, DirectionType.none, ClassType.common)
 	{
-		description = "방어 태세를 취하여 2초 동안 받는 피해를 50% 감소시킵니다.";
+		description = "방어 태세를 취하여 받는 피해를 50% 감소시킵니다.";
 	}
 
 	public override IEnumerator Execute()
 	{
-		BattleLog("2초간 방어 강화");
+		BattleLog("방어 강화");
 
 		Buff damageReduce = new Buff(BuffCategory.takeDamage, true, -0.5f);
-		damageReduce.SetDuration(2f);
+		damageReduce.SetDuration(1f);
 		ApplyBuff(commander, damageReduce);
 
-		GetCommanderInfo().specialize.HideWeapon(1.9f);
+		GetCommanderInfo().specialize.HideWeapon(0.9f);
 		SetAnimState(AnimState.guard);
-		yield return new WaitForSeconds(1.9f);
+		yield return new WaitForSeconds(0.95f);
 		SetAnimState(AnimState.idle);
 		yield break;
 	}
@@ -1264,7 +1264,7 @@ public class ParalyticArrowCommand : Command
 		: base(CommandId.ParalyticArrow, "마비 화살", 1, 1, 20, DirectionType.all, ClassType.hunter)
 	{
 		this.dir = dir;
-		description = "마비를 일으키는 화살을 발사합니다. 적중당한 적은 마비 상태가 되어 3초 동안 '이동' 커맨드를 사용할 수 없습니다. " +
+		description = "마비를 일으키는 화살을 발사합니다. 적중당한 적은 마비 상태가 되어 이번 전투 동안 '이동' 커맨드를 사용할 수 없습니다. " +
 			"(이동 능력이 있는 다른 커맨드는 사용 가능) 모든 방향으로 사용이 가능합니다.";
 		previewPos = ((1, 2), (3, 2));
 	}
@@ -1287,7 +1287,7 @@ public class ParalyticArrowCommand : Command
 		ParticleSystem effect2 = GetEffect(2);
 
 		Buff paralysis = new Buff(BuffCategory.paralysis, false);
-		paralysis.SetDuration(3f);
+		paralysis.SetDuration(10f);
 
 		// 수치조정
 		SetAnimState(AnimState.paralyticArrow);
@@ -1352,7 +1352,8 @@ public class CursePoisonCommand : Command
 		: base(CommandId.CursePoison, "저주 - 중독", 2, 1, 0, DirectionType.cross, ClassType.witch)
 	{
 		this.dir = dir;
-		description = "범위 안의 적에게 중독 저주를 겁니다. 중독 상태의 적은 배틀이 끝날 때마다 피해를 입습니다.";
+		description = "범위 안의 적에게 중독 저주를 겁니다. " +
+			"중독 상태의 적은 배틀이 끝날 때마다 피해를 입습니다. 중첩이 가능합니다.";
 		previewPos = ((1, 2), (3, 2));
 	}
 
@@ -1477,6 +1478,99 @@ public class SpellLightningCommand : Command
 			Hit(totalDamage);
 		}
 		yield return new WaitForSeconds(0.7f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
+public class CursePuppetCommand : Command
+{
+	public CursePuppetCommand(Direction dir = Direction.right)
+		: base(CommandId.CursePuppet, "저주 - 꼭두각시", 2, 1, 0, DirectionType.cross, ClassType.witch)
+	{
+		this.dir = dir;
+		description = "범위 안의 적에게 이번 전투 동안 꼭두각시 저주를 겁니다. " +
+			"꼭두각시 상태의 적은 커맨드의 방향이 반대로 바뀝니다.";
+		previewPos = ((1, 2), (3, 2));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+
+		List<(int x, int y)> attackArea = new List<(int x, int y)>()
+		{ (0,2),(0,1),(0,3),(-1,2),(1,2) };
+
+		attackArea = CalculateArea(attackArea, player.Pos(), dir);
+
+		var targetVec = GetGrid().PosToVec3(attackArea[0]);
+		player.tr.LookAt(targetVec);
+
+		Buff puppet = new Buff(BuffCategory.puppet, false);
+		puppet.SetDuration(10f);
+
+		var effect = GetEffect();
+
+		SetAnimState(AnimState.cursePoison);
+		DisplayAttackRange(attackArea, 0.35f);
+		yield return new WaitForSeconds(0.35f);
+		effect.transform.position = targetVec;
+		effect.Play();
+		if (CheckEnemyInArea(attackArea))
+		{
+			ApplyBuff(Enemy(), puppet);
+			player.Resource++;
+		}
+
+		yield return new WaitForSeconds(0.6f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
+public class EscapeSpellCommand : Command
+{
+	public EscapeSpellCommand(Direction dir = Direction.right)
+		: base(CommandId.EscapeSpell, "탈출 주문", 1, 1, 0, DirectionType.none, ClassType.witch)
+	{
+		description = "반경 1칸 이내에 적이 있으면 반대 방향으로 2칸 순간이동 합니다. 적이 없다면 20 회복합니다.";
+		previewPos = ((2, 2), (3, 2));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		PlayerInfo enemy = GetEnemyInfo();
+		Grid grid = GetGrid();
+
+		List<(int x, int y)> checkArea = new List<(int x, int y)>()
+		{ (0,1),(1,1),(1,0),(1,-1),(0,-1),(-1,-1),(-1,0),(-1,1) };
+		checkArea = CalculateArea(checkArea, player.Pos());
+		var effect = GetEffect();
+		SetAnimState(AnimState.escapeSpell);
+
+		if (CheckEnemyInArea(checkArea))
+		{
+			var dirPos = grid.SubtractPos(player.Pos(), enemy.Pos());
+			Direction teleDir = Grid.PosToDir(dirPos);
+
+			var telePos = (0, 2);
+			telePos = grid.SwitchDir(telePos, teleDir);
+			telePos = grid.AddPos(player.Pos(), telePos, true);
+
+			yield return new WaitForSeconds(0.095f);
+
+			player.tr.position = grid.PosToVec3(telePos);
+			effect.transform.position = player.tr.position;
+			effect.Play();
+			player.tr.LookAt(enemy.tr);
+		}
+		else
+		{
+			effect.transform.position = player.tr.position;
+			effect.Play();
+			Restore(20);
+		}
+
+		yield return new WaitForSeconds(0.95f);
 		SetAnimState(AnimState.idle);
 	}
 }

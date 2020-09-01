@@ -297,6 +297,8 @@ public class InGame : MonoBehaviour
 					StartCoroutine(CheckCommandMissed(commandList[Who.p1][currentTime].time, Who.p1));
 				}
 
+				if (playerInfo[Who.p1].isPuppet)
+					commandList[Who.p1][currentTime].dir = Grid.OppositeDir(commandList[Who.p1][currentTime].dir);
 				commandRoutine[Who.p1] = StartCoroutine(commandList[Who.p1][currentTime].Execute());
 				playingCommand[Who.p1] = commandList[Who.p1][currentTime];
 			}
@@ -311,6 +313,8 @@ public class InGame : MonoBehaviour
 					StartCoroutine(CheckCommandMissed(commandList[Who.p2][currentTime].time, Who.p2));
 				}
 
+				if (playerInfo[Who.p2].isPuppet)
+					commandList[Who.p2][currentTime].dir = Grid.OppositeDir(commandList[Who.p2][currentTime].dir);
 				commandRoutine[Who.p2] = StartCoroutine(commandList[Who.p2][currentTime].Execute());
 				playingCommand[Who.p2] = commandList[Who.p2][currentTime];
 			}

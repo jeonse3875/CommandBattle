@@ -250,6 +250,11 @@ public class Buff
 				effectObj.transform.position = player.tr.position;
 				effectObj.GetComponent<FollowPlayer>().target = player.tr;
 				break;
+			case BuffCategory.puppet:
+				player.isPuppet = true;
+				effectObj.transform.position = player.tr.position;
+				effectObj.GetComponent<FollowPlayer>().target = player.tr;
+				break;
 			default:
 				break;
 		}
@@ -347,6 +352,9 @@ public class Buff
 			case BuffCategory.poison:
 				player.poisonCount -= amount_Int;
 				break;
+			case BuffCategory.puppet:
+				player.isPuppet = false;
+				break;
 			default:
 				break;
 		}
@@ -374,7 +382,7 @@ public enum BuffCategory
 {
 	takeDamage, dealDamage, stiff, gainResourceByTakeDamage, gainResourceByDealDamage,
 	unStoppable, paralysis, vanish, gainResourceByMiss, gainResourceByHit, resourceToBonusDamage,
-	poison,
+	poison, puppet
 }
 
 public enum BuffType

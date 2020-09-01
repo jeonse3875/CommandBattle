@@ -43,6 +43,7 @@ public class PlayerInfo
 	public bool isUnstoppable = false;
 	public bool isParalysis = false;
 	public bool isVanish = false;
+	public bool isPuppet = false;
 	public bool canResourceToBonusDamage = false;
 	public int poisonCount = 0;
 
@@ -211,5 +212,5 @@ public enum AnimState
 	winner = 12, earthWave = 13, heartRip = 14, healPotion = 15, charge = 16,
 	rapidShot = 17, flipShot = 18, startHunting = 19, hunterTrap = 20, paralyticArrow = 21,
 	paralysis = 22, vanish = 23, curseStiff = 24, cursePoison = 25, spellFireExplosion = 26,
-	spellLightning = 27,
+	spellLightning = 27, escapeSpell = 28,
 }
