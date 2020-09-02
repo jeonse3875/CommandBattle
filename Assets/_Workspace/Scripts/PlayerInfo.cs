@@ -46,6 +46,7 @@ public class PlayerInfo
 	public bool isPuppet = false;
 	public bool canResourceToBonusDamage = false;
 	public int poisonCount = 0;
+	public bool isThornArmor = false;
 
 	public PlayerInfo(Who who, (int x, int y) pos, Transform tr)
 	{
@@ -96,6 +97,7 @@ public class PlayerInfo
 			return 0;
 
 		int takenDamage = Mathf.RoundToInt(damage * takeDamageMultiplier) + takeDamageBonus;
+		int reducedDamage = Mathf.Abs(damage - takenDamage);
 		int mode;
 
 		if (takenDamage > originDamage)
@@ -111,6 +113,9 @@ public class PlayerInfo
 		}
 		else
 		{
+			if (isThornArmor)
+				InGame.instance.playerInfo[enemy].TakeDamage(reducedDamage, reducedDamage);
+
 			HP -= takenDamage;
 			InGame.instance.buffSet[me].UpdateCount(CountType.takeDamage, -1);
 			Debug.Log(string.Format("'{0}'이 {1}의 피해를 입음", me.ToString(), takenDamage.ToString()));
@@ -212,5 +217,5 @@ public enum AnimState
 	winner = 12, earthWave = 13, heartRip = 14, healPotion = 15, charge = 16,
 	rapidShot = 17, flipShot = 18, startHunting = 19, hunterTrap = 20, paralyticArrow = 21,
 	paralysis = 22, vanish = 23, curseStiff = 24, cursePoison = 25, spellFireExplosion = 26,
-	spellLightning = 27, escapeSpell = 28,
+	spellLightning = 27, escapeSpell = 28, sniping = 29, sweep = 30, thornShield = 31,
 }

@@ -74,6 +74,30 @@ public class BuffSet
 			buffList.Remove(buff);
 		}
 	}
+
+	public int ClearBadBuff()
+	{
+		List<Buff> removeList = new List<Buff>();
+
+		foreach (var buff in buffList)
+		{
+			if (buff.isPassive)
+				continue;
+
+			if (buff.isApplied && !buff.isGood)
+			{
+				buff.Release(player);
+				removeList.Add(buff);
+			}
+		}
+
+		foreach (var buff in removeList)
+		{
+			buffList.Remove(buff);
+		}
+
+		return removeList.Count;
+	}
 }
 
 public class Buff
@@ -255,6 +279,9 @@ public class Buff
 				effectObj.transform.position = player.tr.position;
 				effectObj.GetComponent<FollowPlayer>().target = player.tr;
 				break;
+			case BuffCategory.thornArmor:
+				player.isThornArmor = true;
+				break;
 			default:
 				break;
 		}
@@ -355,6 +382,9 @@ public class Buff
 			case BuffCategory.puppet:
 				player.isPuppet = false;
 				break;
+			case BuffCategory.thornArmor:
+				player.isThornArmor = false;
+				break;
 			default:
 				break;
 		}
@@ -382,7 +412,7 @@ public enum BuffCategory
 {
 	takeDamage, dealDamage, stiff, gainResourceByTakeDamage, gainResourceByDealDamage,
 	unStoppable, paralysis, vanish, gainResourceByMiss, gainResourceByHit, resourceToBonusDamage,
-	poison, puppet
+	poison, puppet, thornArmor,
 }
 
 public enum BuffType

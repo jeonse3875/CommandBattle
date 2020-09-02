@@ -124,11 +124,11 @@ public enum CommandId
 	//공용
 	Empty, Move, Guard, HealPotion,
 	//기사
-	EarthStrike, WhirlStrike, CombatReady, EarthWave, Charge,
+	EarthStrike, WhirlStrike, CombatReady, EarthWave, Charge, ThornShield,
 	//늑대인간
-	Cutting, LeapAttack, InnerWildness, HeartRip, Vanish,
+	Cutting, LeapAttack, InnerWildness, HeartRip, Vanish, Sweep,
 	//사냥꾼
-	RapidShot, FlipShot, StartHunting, HunterTrap, ParalyticArrow,
+	RapidShot, FlipShot, StartHunting, HunterTrap, ParalyticArrow, Sniping, HerbTherapy,
 	//마녀
 	CurseStiff, CursePoison, CursePuppet, SpellFireExplosion, SpellLightning, EscapeSpell,
 }
@@ -276,6 +276,15 @@ public class Command
 		{
 			area[i] = grid.AddPos(area[i], curPos);
 		}
+
+		return area;
+	}
+
+	public (int x, int y) CalculateArea((int x, int y) area, (int x, int y) curPos, Direction dir = Direction.up)
+	{
+		Grid grid = GetGrid();
+		area = grid.SwitchDir(area, dir);
+		area = grid.AddPos(curPos, area);
 
 		return area;
 	}
@@ -635,15 +644,15 @@ public class CombatReadyCommand : Command
 	public CombatReadyCommand(Direction dir = Direction.right)
 		: base(CommandId.CombatReady, "전투 준비", 2, 1, 0, DirectionType.none, ClassType.knight)
 	{
-		description = "받는 피해를 한 번만 50% 감소시킵니다. 주는 피해를 한 번만 50% 증가시킵니다.";
+		description = "받는 피해를 한 번만 30% 감소시킵니다. 주는 피해를 한 번만 30% 증가시킵니다.";
 	}
 
 	public override IEnumerator Execute()
 	{
-		Buff takeDamageReduce = new Buff(BuffCategory.takeDamage, true, -0.5f);
+		Buff takeDamageReduce = new Buff(BuffCategory.takeDamage, true, -0.3f);
 		takeDamageReduce.SetCount(CountType.takeDamage, 1);
 
-		Buff dealDamageIncrease = new Buff(BuffCategory.dealDamage, true, +0.5f);
+		Buff dealDamageIncrease = new Buff(BuffCategory.dealDamage, true, +0.3f);
 		dealDamageIncrease.SetCount(CountType.dealDamage, 1);
 		var effect = GetEffect();
 		effect.transform.position = GetCommanderInfo().tr.position;
@@ -786,6 +795,35 @@ public class ChargeCommand : Command
 		SetAnimState(AnimState.idle);
 	}
 }
+
+public class ThornShieldCommand : Command
+{
+	public ThornShieldCommand(Direction dir = Direction.right)
+		: base(CommandId.ThornShield, "가시 방패", 2, 1, 0, DirectionType.none, ClassType.knight)
+	{
+		description = "2초 동안 받는 피해가 40% 감소합니다. 감소시킨 피해를 적에게 반사합니다.";
+	}
+
+	public override IEnumerator Execute()
+	{
+		Buff takeDamageReduce = new Buff(BuffCategory.takeDamage, true, -0.4f);
+		takeDamageReduce.SetDuration(2f);
+
+		Buff thorn = new Buff(BuffCategory.thornArmor, true);
+		thorn.SetDuration(2f);
+
+		// 수치 조정
+		SetAnimState(AnimState.thornShield);
+		ApplyBuff(commander, takeDamageReduce);
+		ApplyBuff(commander, thorn);
+		BattleLog("방어 강화. 피해 일부 반사.");
+		yield return new WaitForSeconds(1.95f);
+		SetAnimState(AnimState.idle);
+
+		yield break;
+	}
+}
+
 #endregion
 
 #region 늑대인간 커맨드
@@ -1090,6 +1128,69 @@ public class VanishCommand : Command
 	}
 }
 
+public class SweepCommand : Command
+{
+	public SweepCommand(Direction dir = Direction.right)
+		: base(CommandId.Sweep, "휩쓸기", 2, 1, 25, DirectionType.cross, ClassType.werewolf)
+	{
+		this.dir = dir;
+		description = "전방으로 두 칸 이동하며 주위의 적을 공격합니다. 늑대 상태에서는 적을 경직시킵니다.";
+		previewPos = ((1, 2), (2, 3));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Grid grid = GetGrid();
+		var effect = GetEffect();
+		Transform enemyTr = GetEnemyInfo().tr;
+
+		List<(int x, int y)> attackArea = new List<(int x, int y)>() { (-1, 1), (1, 1), (0, 2), (-1, 2), (1, 2), (0, 3) };
+		attackArea = CalculateArea(attackArea, player.Pos(), dir);
+		(int x, int y) targetPos = CalculateArea((0, 2), player.Pos(), dir);
+		targetPos = grid.ClampPos(targetPos);
+		var targetVec = grid.PosToVec3(targetPos);
+		player.tr.LookAt(targetVec);
+		effect.transform.position = player.tr.position;
+		effect.transform.LookAt(targetVec);
+
+		List<(int x, int y)> area1 = attackArea.GetRange(0, 3);
+		List<(int x, int y)> area2 = attackArea.GetRange(3, 3);
+
+		Buff stiff = new Buff(BuffCategory.stiff, false);
+		stiff.SetCount(CountType.instant);
+
+		// 수치조정
+		SetAnimState(AnimState.sweep);
+		movingTween = player.tr.DOMove(targetVec, 1.3f).SetEase(Ease.Linear);
+		DisplayAttackRange(area1, 0.5f);
+		yield return new WaitForSeconds(0.5f);
+		effect.transform.position = player.tr.position;
+		effect.Play();
+		if(CheckEnemyInArea(area1))
+		{
+			if (player.transformCount.Equals(0))
+				Hit(totalDamage);
+			else
+				Hit(totalDamage, stiff);
+		}
+		yield return new WaitForSeconds(0.3f);
+		DisplayAttackRange(area2, 0.5f);
+		yield return new WaitForSeconds(0.5f);
+		effect.transform.position = player.tr.position;
+		effect.Play();
+		if (CheckEnemyInArea(area2))
+		{
+			if (player.transformCount.Equals(0))
+				Hit(totalDamage);
+			else
+				Hit(totalDamage, stiff);
+		}
+		yield return new WaitForSeconds(0.3f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
 #endregion
 
 #region 사냥꾼 커맨드
@@ -1311,6 +1412,107 @@ public class ParalyticArrowCommand : Command
 	}
 }
 
+public class SnipingCommand : Command
+{
+	public SnipingCommand(Direction dir = Direction.rightUp)
+		: base(CommandId.Sniping, "저격", 3, 1, 25, DirectionType.diagonal, ClassType.hunter)
+	{
+		this.dir = dir;
+		description = "정신을 집중하여 먼 거리까지 날아가는 화살을 발사합니다. " +
+			"거리에 비례하여 최대 4배까지 피해량이 증가합니다. 대각 방향으로만 사용이 가능합니다.";
+		previewPos = ((0, 0), (4, 4));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Grid grid = GetGrid();
+
+		if (isPreview)
+			this.dir = Direction.rightUp;
+
+		List<(int x, int y)> attackArea = new List<(int x, int y)> { (0, 1), (0, 2), (0, 3), (0, 4) };
+		attackArea = CalculateArea(attackArea, player.Pos(), dir);
+		Vector3 targetVec = grid.PosToVec3(attackArea[attackArea.Count - 1]);
+		player.tr.LookAt(targetVec);
+
+		ParticleSystem effect1 = GetEffect(1);
+		effect1.transform.position = player.tr.position;
+		effect1.transform.LookAt(targetVec);
+		effect1.Play();
+
+		ParticleSystem effect2 = GetEffect(2);
+		TrailRenderer trail = effect2.GetComponentInChildren<TrailRenderer>();
+		effect2.transform.position = player.tr.position;
+		effect2.transform.LookAt(targetVec);
+		trail.Clear();
+
+		ParticleSystem effect3 = GetEffect(3);
+
+		// 수치조정
+		int damage = this.totalDamage;
+		SetAnimState(AnimState.sniping);
+		DisplayAttackRange(attackArea, 1.5f);
+		yield return new WaitForSeconds(1.5f);
+
+		float duration = 0.35f;
+		float progress = 0f;
+		effect2.Play();
+		effect2.transform.DOMove(targetVec, duration)
+			.SetEase(Ease.OutCubic).OnComplete(() => { effect2.Clear(); effect2.Stop(); });
+		var enemy = GetEnemyInfo();
+		(int x, int y) projectilePos;
+		while (progress < duration)
+		{
+			projectilePos = grid.Vec3ToPos(effect2.transform.position);
+			if (projectilePos.Equals(enemy.Pos()) && attackArea.Contains(projectilePos))
+			{
+				int mulitplier = Mathf.Abs(grid.SubtractPos(enemy.Pos(), player.Pos()).x);
+				Hit(totalDamage * mulitplier);
+				effect3.transform.position = enemy.tr.position;
+				effect3.Play();
+				effect2.Stop();
+				effect2.Clear();
+				break;
+			}
+			yield return null;
+			progress += Time.deltaTime;
+		}
+
+		yield return new WaitForSeconds(0.3f + (duration - progress));
+		SetAnimState(AnimState.idle);
+	}
+}
+
+public class HerbTherapyCommand : Command
+{
+	public HerbTherapyCommand(Direction dir = Direction.right)
+		: base(CommandId.HerbTherapy, "약초 치료", 1, 1, 0, DirectionType.none, ClassType.hunter)
+	{
+		description = "해로운 효과를 모두 제거하고 체력을 10 회복합니다.";
+	}
+
+	public override IEnumerator Execute()
+	{
+		var player = GetCommanderInfo();
+		player.specialize.HideWeapon(0.9f);
+		var effect = GetEffect();
+		effect.transform.position = player.tr.position;
+		effect.Play();
+		SetAnimState(AnimState.healPotion);
+		yield return new WaitForSeconds(0.66f);
+		if (!isPreview)
+		{
+			int deBuffCount = InGame.instance.buffSet[player.me].ClearBadBuff();
+			if (!deBuffCount.Equals(0))
+				BattleLog(string.Format("디버프 {0}개 제거", deBuffCount.ToString()));
+		}
+		Restore(10);
+		yield return new WaitForSeconds(0.3f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
 #endregion
 
 #region 마녀 커맨드
@@ -1384,6 +1586,7 @@ public class CursePoisonCommand : Command
 		{
 			ApplyBuff(Enemy(), poison);
 			player.Resource++;
+			BattleLog(string.Format("중독 적용. 현재 {0}스택", GetEnemyInfo().poisonCount.ToString()));
 		}
 
 		yield return new WaitForSeconds(0.6f);
@@ -1405,6 +1608,7 @@ public class SpellFireExplosionCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
+		player.Resource -= costResource;
 
 		List<(int x, int y)> attackArea = new List<(int x, int y)>()
 		{ (0,2),(0,1),(0,3),(-1,1),(-1,2),(-1,3),(1,1),(1,2),(1,3) };
@@ -1438,7 +1642,8 @@ public class SpellLightningCommand : Command
 	{
 		this.dir = dir;
 		costResource = 5;
-		description = string.Format("마력 {0} 필요. 전방에 세 번 연속으로 번개를 떨어뜨려 강한 피해를 입힙니다.", costResource.ToString());
+		description = string.Format("마력 {0} 필요. 전방에 세 번 연속으로 번개를 떨어뜨려 강한 피해를 입힙니다." +
+			"모든 방향으로 사용이 가능합니다.", costResource.ToString());
 		previewPos = ((0, 2), (3, 2));
 	}
 
@@ -1447,7 +1652,9 @@ public class SpellLightningCommand : Command
 		PlayerInfo player = GetCommanderInfo();
 		Grid grid = GetGrid();
 
-		List<(int x, int y)> attackArea = new List<(int x, int y)>() { (0,1),(0,2),(0,3) };
+		player.Resource -= costResource;
+
+		List<(int x, int y)> attackArea = new List<(int x, int y)>() { (0, 1), (0, 2), (0, 3) };
 		attackArea = CalculateArea(attackArea, player.Pos(), dir);
 		var targetVec = grid.PosToVec3(attackArea[0]);
 		player.tr.LookAt(targetVec);
@@ -1518,6 +1725,7 @@ public class CursePuppetCommand : Command
 		if (CheckEnemyInArea(attackArea))
 		{
 			ApplyBuff(Enemy(), puppet);
+			BattleLog("꼭두각시 적용");
 			player.Resource++;
 		}
 
@@ -1562,6 +1770,7 @@ public class EscapeSpellCommand : Command
 			effect.transform.position = player.tr.position;
 			effect.Play();
 			player.tr.LookAt(enemy.tr);
+			BattleLog("탈출");
 		}
 		else
 		{
