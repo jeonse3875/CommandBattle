@@ -99,7 +99,10 @@ public class LobbyUI : MonoBehaviour
 
 	private void Start()
 	{
-		UserInfo.instance.UpdateCommandInfo();
+		if (!UserInfo.instance.isUpdatedCommandData)
+			UserInfo.instance.UpdateCommandInfo();
+		if (!UserInfo.instance.isUpdatedRecordData)
+			UserInfo.instance.UpdateRecordInfo();
 		UserInfo.instance.GiveAllCommand(); // Test
 		BackendManager.instance.JoinMatchingServer();
 		AddHandler();
@@ -259,8 +262,6 @@ public class LobbyUI : MonoBehaviour
 		return obj;
 	}
 
-	#endregion
-
 	public void SetCharacterPreview(ClassType cType)
 	{
 		characterPreviewObj = Instantiate(Resources.Load<GameObject>(string.Format("Character/{0}_Blue", cType.ToString())));
@@ -268,6 +269,7 @@ public class LobbyUI : MonoBehaviour
 		characterPreviewObj.GetComponent<ClassSpecialize>().Initialize();
 		characterPreviewCamera.SetActive(true);
 	}
+	#endregion
 
 	#region Button
 
@@ -371,8 +373,6 @@ public class LobbyUI : MonoBehaviour
 
 	public void Button_ExitGame()
 	{
-		if (UserInfo.instance.isUpdatedCommandData)
-			UserInfo.instance.UploadCommandInfo();
 		Application.Quit();
 	}
 

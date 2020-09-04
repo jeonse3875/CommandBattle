@@ -561,7 +561,7 @@ public class HealPotionCommand : Command
 public class EarthStrikeCommand : Command
 {
 	public EarthStrikeCommand(Direction dir = Direction.right)
-		: base(CommandId.EarthStrike, "대지의 일격", 2, 2, 40, DirectionType.cross, ClassType.knight)
+		: base(CommandId.EarthStrike, "대지의 일격", 2, 2, 35, DirectionType.cross, ClassType.knight)
 	{
 		this.dir = dir;
 		description = "대지를 강타해 전방의 적에게 피해를 주고 경직시킵니다.";
@@ -606,7 +606,7 @@ public class EarthStrikeCommand : Command
 public class WhirlStrikeCommand : Command
 {
 	public WhirlStrikeCommand(Direction dir = Direction.right)
-		: base(CommandId.WhirlStrike, "회오리 타격", 1, 3, 20, DirectionType.none, ClassType.knight)
+		: base(CommandId.WhirlStrike, "회오리 타격", 2, 2, 20, DirectionType.none, ClassType.knight)
 	{
 		description = "칼을 휘둘러 주변의 적을 공격합니다.";
 		previewPos = ((2, 2), (3, 2));
@@ -634,7 +634,7 @@ public class WhirlStrikeCommand : Command
 		{
 			Hit(damage);
 		}
-		yield return new WaitForSeconds(0.3f);
+		yield return new WaitForSeconds(0.4f);
 		SetAnimState(AnimState.idle);
 	}
 }
@@ -1131,7 +1131,7 @@ public class VanishCommand : Command
 public class SweepCommand : Command
 {
 	public SweepCommand(Direction dir = Direction.right)
-		: base(CommandId.Sweep, "휩쓸기", 2, 1, 25, DirectionType.cross, ClassType.werewolf)
+		: base(CommandId.Sweep, "휩쓸기", 2, 1, 30, DirectionType.cross, ClassType.werewolf)
 	{
 		this.dir = dir;
 		description = "전방으로 두 칸 이동하며 주위의 적을 공격합니다. 늑대 상태에서는 적을 경직시킵니다.";
@@ -1323,7 +1323,7 @@ public class StartHuntingCommand : Command
 public class HunterTrapCommand : Command
 {
 	public HunterTrapCommand(Direction dir = Direction.right)
-		: base(CommandId.HunterTrap, "사냥꾼의 덫", 1, 1, 25, DirectionType.all, ClassType.hunter)
+		: base(CommandId.HunterTrap, "사냥꾼의 덫", 1, 1, 20, DirectionType.all, ClassType.hunter)
 	{
 		this.dir = dir;
 		description = "밟으면 피해를 입고 경직 상태가 되는 덫을 설치합니다. " +
@@ -1362,7 +1362,7 @@ public class HunterTrapCommand : Command
 public class ParalyticArrowCommand : Command
 {
 	public ParalyticArrowCommand(Direction dir = Direction.right)
-		: base(CommandId.ParalyticArrow, "마비 화살", 1, 1, 20, DirectionType.all, ClassType.hunter)
+		: base(CommandId.ParalyticArrow, "마비 화살", 1, 1, 25, DirectionType.all, ClassType.hunter)
 	{
 		this.dir = dir;
 		description = "마비를 일으키는 화살을 발사합니다. 적중당한 적은 마비 상태가 되어 이번 전투 동안 '이동' 커맨드를 사용할 수 없습니다. " +
@@ -1594,6 +1594,51 @@ public class CursePoisonCommand : Command
 	}
 }
 
+public class CursePuppetCommand : Command
+{
+	public CursePuppetCommand(Direction dir = Direction.right)
+		: base(CommandId.CursePuppet, "저주 - 꼭두각시", 2, 1, 0, DirectionType.cross, ClassType.witch)
+	{
+		this.dir = dir;
+		description = "범위 안의 적에게 이번 전투 동안 꼭두각시 저주를 겁니다. " +
+			"꼭두각시 상태의 적은 커맨드의 방향이 반대로 바뀝니다.";
+		previewPos = ((1, 2), (3, 2));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+
+		List<(int x, int y)> attackArea = new List<(int x, int y)>()
+		{ (0,2),(0,1),(0,3),(-1,2),(1,2) };
+
+		attackArea = CalculateArea(attackArea, player.Pos(), dir);
+
+		var targetVec = GetGrid().PosToVec3(attackArea[0]);
+		player.tr.LookAt(targetVec);
+
+		Buff puppet = new Buff(BuffCategory.puppet, false);
+		puppet.SetDuration(10f);
+
+		var effect = GetEffect();
+
+		SetAnimState(AnimState.cursePoison);
+		DisplayAttackRange(attackArea, 0.35f);
+		yield return new WaitForSeconds(0.35f);
+		effect.transform.position = targetVec;
+		effect.Play();
+		if (CheckEnemyInArea(attackArea))
+		{
+			ApplyBuff(Enemy(), puppet);
+			BattleLog("꼭두각시 적용");
+			player.Resource++;
+		}
+
+		yield return new WaitForSeconds(0.6f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
 public class SpellFireExplosionCommand : Command
 {
 	public SpellFireExplosionCommand(Direction dir = Direction.right)
@@ -1685,51 +1730,6 @@ public class SpellLightningCommand : Command
 			Hit(totalDamage);
 		}
 		yield return new WaitForSeconds(0.7f);
-		SetAnimState(AnimState.idle);
-	}
-}
-
-public class CursePuppetCommand : Command
-{
-	public CursePuppetCommand(Direction dir = Direction.right)
-		: base(CommandId.CursePuppet, "저주 - 꼭두각시", 2, 1, 0, DirectionType.cross, ClassType.witch)
-	{
-		this.dir = dir;
-		description = "범위 안의 적에게 이번 전투 동안 꼭두각시 저주를 겁니다. " +
-			"꼭두각시 상태의 적은 커맨드의 방향이 반대로 바뀝니다.";
-		previewPos = ((1, 2), (3, 2));
-	}
-
-	public override IEnumerator Execute()
-	{
-		PlayerInfo player = GetCommanderInfo();
-
-		List<(int x, int y)> attackArea = new List<(int x, int y)>()
-		{ (0,2),(0,1),(0,3),(-1,2),(1,2) };
-
-		attackArea = CalculateArea(attackArea, player.Pos(), dir);
-
-		var targetVec = GetGrid().PosToVec3(attackArea[0]);
-		player.tr.LookAt(targetVec);
-
-		Buff puppet = new Buff(BuffCategory.puppet, false);
-		puppet.SetDuration(10f);
-
-		var effect = GetEffect();
-
-		SetAnimState(AnimState.cursePoison);
-		DisplayAttackRange(attackArea, 0.35f);
-		yield return new WaitForSeconds(0.35f);
-		effect.transform.position = targetVec;
-		effect.Play();
-		if (CheckEnemyInArea(attackArea))
-		{
-			ApplyBuff(Enemy(), puppet);
-			BattleLog("꼭두각시 적용");
-			player.Resource++;
-		}
-
-		yield return new WaitForSeconds(0.6f);
 		SetAnimState(AnimState.idle);
 	}
 }

@@ -4,7 +4,7 @@ using UnityEngine.UI;
 public class CommandInfoBlock : MonoBehaviour
 {
     public CommandId id;
-    public ClassType cType;
+    public ClassType commandCType;
     public ClassType mountedCType;
     public int tapNum;
     public bool isOwn;
@@ -51,9 +51,9 @@ public class CommandInfoBlock : MonoBehaviour
         this.tapNum = tapNum;
         this.isOwn = isOwn;
         this.id = command.id;
-        cType = command.classType;
-        if (cType != ClassType.common)
-            mountedCType = cType;
+        commandCType = command.classType;
+        if (commandCType != ClassType.common)
+            mountedCType = commandCType;
         
         if (command.classType == ClassType.common)
         {
@@ -77,7 +77,7 @@ public class CommandInfoBlock : MonoBehaviour
     {
         LobbyUI lobby = GameObject.Find("LobbyUI").GetComponent<LobbyUI>();
 
-        if (cType.Equals(ClassType.common))
+        if (commandCType.Equals(ClassType.common))
         {
             if(tapNum.Equals(0))
             {
@@ -147,7 +147,7 @@ public class CommandInfoBlock : MonoBehaviour
     {
         if (status)
         {
-            if (cType.Equals(ClassType.common) && tapNum.Equals(0))
+            if (commandCType.Equals(ClassType.common) && tapNum.Equals(0))
                 return;
             ColorUtility.TryParseHtmlString("#FF8400", out Color color);
             image_MountButton.color = color;
@@ -168,7 +168,7 @@ public class CommandInfoBlock : MonoBehaviour
 
     public void ChangeMountInfo(ClassType cType, CommandId id, bool status)
     {
-        if (id != this.id)
+        if (this.mountedCType != cType || id != this.id)
             return;
 
         SetMountButtonUI(status);

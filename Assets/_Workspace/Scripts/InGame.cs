@@ -1,5 +1,6 @@
 ﻿using BackEnd.Tcp;
 using DG.Tweening;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,6 +8,11 @@ using UnityEngine;
 public enum Who
 {
 	none, p1, p2
+}
+
+public enum MapEvent
+{
+	none = 0, heal, damageBonus,
 }
 
 public class InGame : MonoBehaviour
@@ -19,8 +25,10 @@ public class InGame : MonoBehaviour
 	public Who me;
 	public Dictionary<Who, ClassType> playingCType = new Dictionary<Who, ClassType>();
 	public Dictionary<Who, SessionId> sessionId = new Dictionary<Who, SessionId>();
+	public Dictionary<Who, (int play, int win)> matchRecord = new Dictionary<Who, (int play, int win)>();
 	public Dictionary<Who, bool> isCommandComplete = new Dictionary<Who, bool>();
 	public Dictionary<Who, bool> isBattleEnd = new Dictionary<Who, bool>();
+	public bool isMapEvent = false;
 	public bool isGameEnd = false;
 
 	public Dictionary<Who, List<Command>> commandList = new Dictionary<Who, List<Command>>();
@@ -44,7 +52,6 @@ public class InGame : MonoBehaviour
 
 	public GameObject attackRangeBlue;
 	public GameObject attackRangeRed;
-
 	public GameObject damageText;
 
 	public Dictionary<Who, BuffSet> buffSet = new Dictionary<Who, BuffSet>();
@@ -57,7 +64,13 @@ public class InGame : MonoBehaviour
 
 	public bool canViewLastBattle = false;
 
+	private bool skipFirstMapEvent = true;
+
+	public MapEvent curMapEvent;
+	public (int x, int y) curMapEventPos;
+
 	#region LifeCycle
+
 	private void Start()
 	{
 		if (instance == null)
@@ -127,13 +140,13 @@ public class InGame : MonoBehaviour
 	#endregion
 
 	#region 게임루틴
+
 	private IEnumerator GameRoutine()
 	{
-		#region 연출
-
 		var waitGameStart = new WaitUntil(IsGameStart);
 		var waitCommandComplete = new WaitUntil(IsCommandComplete);
 		var waitBattleEnd = new WaitUntil(IsBattleEnd);
+		var waitMapEvent = new WaitUntil(IsMapEvent);
 		var waitIntroduce = new WaitForSeconds(2f);
 
 		if (BackendManager.instance.isP1)
@@ -141,11 +154,13 @@ public class InGame : MonoBehaviour
 		else
 			me = Who.p2;
 
-		inGameUI.image_Blind.gameObject.SetActive(true);
 		BackendManager.instance.SendData(new GameStartMsg());
 		yield return waitGameStart;
 		BackendManager.instance.SendData(new GameStartMsg());
+
 		InitializeGame();
+
+		#region 연출
 
 		yield return new WaitForSeconds(inGameUI.DoFadeOut());
 
@@ -173,7 +188,12 @@ public class InGame : MonoBehaviour
 			yield return waitCommandComplete;
 			StartBattle();
 			yield return waitBattleEnd;
-			CheckGameEnd();
+			if(!isGameEnd)
+			{
+				SendMapEvent(ChooseMapEvent());
+				yield return waitMapEvent;
+				yield return StartCoroutine(ApplyMapEvent());
+			}
 		}
 		yield return StartCoroutine(EndGame());
 	}
@@ -181,6 +201,9 @@ public class InGame : MonoBehaviour
 	private void InitializeGame()
 	{
 		Debug.Log("게임 초기화");
+		var record = UserInfo.instance.matchRecord[playingCType[me]];
+		record.play++;
+		UserInfo.instance.matchRecord[playingCType[me]] = record;
 
 		grid = new Grid(5, 5, 5f, new Vector3(-10, 0, -10));
 		playerNickname = BackendManager.instance.GetMyNickname();
@@ -203,38 +226,24 @@ public class InGame : MonoBehaviour
 		commandRoutine[Who.p2] = null;
 		isCommandHit[Who.p1] = false;
 		isCommandHit[Who.p2] = false;
+		isCommandComplete[Who.p1] = false;
+		isCommandComplete[Who.p2] = false;
 
 		cam.ResetCamera();
 
 		AddPassive(Who.p1);
 		AddPassive(Who.p2);
 
+		MapEventPickUp.pickUpCount = 0;
+
 		inGameUI.InitializeGame();
-	}
-
-	private void AddPassive(Who who)
-	{
-		if (playerInfo[who].specialize == null)
-			return;
-
-		var passives = playerInfo[who].specialize.GetPassive();
-
-		if (passives == null)
-			return;
-
-		foreach(var passive in passives)
-		{
-			passive.isPassive = true;
-			buffSet[who].Add(passive);
-		}
 	}
 
 	private void InitializeVariable()
 	{
-		isCommandComplete[Who.p1] = false;
-		isCommandComplete[Who.p2] = false;
 		isBattleEnd[Who.p1] = false;
 		isBattleEnd[Who.p2] = false;
+		isMapEvent = false;
 
 		inGameUI.InitializeVariable();
 	}
@@ -245,22 +254,11 @@ public class InGame : MonoBehaviour
 		inGameUI.StartMakingCommand();
 	}
 
-	private bool IsGameStart()
-	{
-		if (isGameStart.ContainsKey(Who.p1) && isGameStart.ContainsKey(Who.p2))
-			return isGameStart[Who.p1] && isGameStart[Who.p2];
-		else
-			return false;
-	}
-
-	private bool IsCommandComplete()
-	{
-		CheckSomeoneLeaveGame();
-		return isCommandComplete[Who.p1] && isCommandComplete[Who.p2];
-	}
-
 	private void StartBattle()
 	{
+		isCommandComplete[Who.p1] = false;
+		isCommandComplete[Who.p2] = false;
+
 		inGameUI.StartBattle();
 		Debug.Log("배틀 시작");
 		canViewLastBattle = true;
@@ -359,41 +357,81 @@ public class InGame : MonoBehaviour
 		yield return new WaitForSeconds(2f);
 	}
 
-	private IEnumerator WerewolfTransform(Who who)
+	private void SendMapEvent(MapEventMsg msg)
 	{
-		bool canTransform = playingCType[who].Equals(ClassType.werewolf)
-			&& playerInfo[who].Resource >= 3 && playerInfo[who].transformCount.Equals(0) && playerInfo[who].HP > 0;
+		if (!me.Equals(Who.p1))
+			return;
 
-		if (!canTransform)
-			yield break;
-
-		if (isGameEnd)
-			yield break;
-
-		yield return new WaitForSeconds(cam.ZoomInTarget(playerInfo[who].tr.position));
-		playerInfo[who].SetAnimState(AnimState.innerWildness);
-		yield return new WaitForSeconds(0.5f);
-		playerInfo[who].specialize.Transform();
-		yield return new WaitForSeconds(0.5f);
-		playerInfo[who].SetAnimState(AnimState.idle);
-		yield return new WaitForSeconds(cam.ZoomOut());
-
-		playerInfo[who].transformCount++;
+		BackendManager.instance.SendData(msg);
 	}
 
-	private IEnumerator CheckCommandMissed(int commandTime, Who who)
+	private MapEventMsg ChooseMapEvent()
 	{
-		yield return new WaitForSeconds(commandTime - 0.01f);
-		if (isCommandHit[who].Equals(true))
+		curMapEvent = MapEvent.none;
+		MapEventMsg noEvent = new MapEventMsg(MapEvent.none, (10, 10));
+
+		if (!me.Equals(Who.p1))
+			return noEvent;
+
+		if (skipFirstMapEvent)
 		{
-			playerInfo[who].Resource += playerInfo[who].resourceByHit;
-		}
-		else
-		{
-			playerInfo[who].Resource += playerInfo[who].resourceByMiss;
+			skipFirstMapEvent = false;
+			return noEvent;
 		}
 
-		isCommandHit[who] = false;
+		if (UnityEngine.Random.Range(0, 1f) > 0.65f)
+			return noEvent;
+
+		if (MapEventPickUp.pickUpCount >= 1)
+			return noEvent;
+
+		int eventCount = Enum.GetValues(typeof(MapEvent)).Length;
+		int eventIndex = UnityEngine.Random.Range(1, eventCount);
+		curMapEvent = (MapEvent)eventIndex;
+		List<(int x, int y)> playersPos = new List<(int x, int y)> { playerInfo[Who.p1].Pos(), playerInfo[Who.p2].Pos() };
+		curMapEventPos = grid.ChooseRandomPos(playersPos);
+
+		Debug.Log(curMapEvent.ToString() + curMapEventPos.ToString());
+
+		return new MapEventMsg(curMapEvent, curMapEventPos);
+	}
+
+	private IEnumerator ApplyMapEvent()
+	{
+		if (isLeaveEnd)
+			yield break;
+
+		GameObject pickUp = Resources.Load<GameObject>(string.Format("MapEvent/MapEvent_{0}", curMapEvent.ToString()));
+		Vector3 targetVec = grid.PosToVec3(curMapEventPos);
+		if (pickUp != null)
+			pickUp = Instantiate(pickUp, targetVec + Vector3.up * 23f, Quaternion.identity);
+		
+		switch (curMapEvent)
+		{
+			case MapEvent.heal:
+			case MapEvent.damageBonus:
+				pickUp.transform.DOMove(targetVec, 2f).SetEase(Ease.OutCubic);
+				pickUp.GetComponent<MapEventPickUp>().SetPickUp(curMapEvent, curMapEventPos);
+				yield return new WaitForSeconds(2.3f);
+				break;
+			default:
+				break;
+		}
+
+	}
+
+	private bool IsGameStart()
+	{
+		if (isGameStart.ContainsKey(Who.p1) && isGameStart.ContainsKey(Who.p2))
+			return isGameStart[Who.p1] && isGameStart[Who.p2];
+		else
+			return false;
+	}
+
+	private bool IsCommandComplete()
+	{
+		CheckSomeoneLeaveGame();
+		return isCommandComplete[Who.p1] && isCommandComplete[Who.p2];
 	}
 
 	private bool IsBattleEnd()
@@ -402,9 +440,10 @@ public class InGame : MonoBehaviour
 		return isBattleEnd[Who.p1] && isBattleEnd[Who.p2];
 	}
 
-	private void CheckGameEnd()
+	private bool IsMapEvent()
 	{
-		Debug.Log("배틀 종료, 게임 종료 여부 결정");
+		CheckSomeoneLeaveGame();
+		return isMapEvent;
 	}
 
 	private IEnumerator EndGame()
@@ -440,8 +479,93 @@ public class InGame : MonoBehaviour
 			playerInfo[winner].SetAnimState(AnimState.winner);
 			yield return new WaitForSeconds(cam.ZoomInTarget(playerInfo[me].tr.position));
 			inGameUI.SetMatchResultUI(winner.Equals(me), false, isLeaveEnd);
+			if (winner.Equals(me))
+			{
+				var record = UserInfo.instance.matchRecord[playingCType[me]];
+				record.win++;
+				UserInfo.instance.matchRecord[playingCType[me]] = record;
+			}
 		}
 		
+	}
+
+	#endregion
+
+	#region 서브루틴
+
+	private void AddPassive(Who who)
+	{
+		if (playerInfo[who].specialize == null)
+			return;
+
+		var passives = playerInfo[who].specialize.GetPassive();
+
+		if (passives == null)
+			return;
+
+		foreach (var passive in passives)
+		{
+			passive.isPassive = true;
+			buffSet[who].Add(passive);
+		}
+	}
+
+	private int GetPlayerEndTime(Who who)
+	{
+		int index = 0;
+		while (index < 10)
+		{
+			if (!commandList.ContainsKey(who))
+				break;
+
+			if (commandList[who][index].id.Equals(CommandId.Empty))
+			{
+				break;
+			}
+			else
+			{
+				index += commandList[who][index].time;
+			}
+		}
+
+		return index;
+	}
+
+	private IEnumerator CheckCommandMissed(int commandTime, Who who)
+	{
+		yield return new WaitForSeconds(commandTime - 0.01f);
+		if (isCommandHit[who].Equals(true))
+		{
+			playerInfo[who].Resource += playerInfo[who].resourceByHit;
+		}
+		else
+		{
+			playerInfo[who].Resource += playerInfo[who].resourceByMiss;
+		}
+
+		isCommandHit[who] = false;
+	}
+
+	private IEnumerator WerewolfTransform(Who who)
+	{
+		bool canTransform = playingCType[who].Equals(ClassType.werewolf)
+			&& playerInfo[who].Resource >= 3 && playerInfo[who].transformCount.Equals(0) && playerInfo[who].HP > 0;
+
+		if (!canTransform)
+			yield break;
+
+		if (isGameEnd)
+			yield break;
+
+		yield return new WaitForSeconds(cam.ZoomInTarget(playerInfo[who].tr.position));
+		playerInfo[who].SetAnimState(AnimState.innerWildness);
+		yield return new WaitForSeconds(0.5f);
+		playerInfo[who].specialize.Transform();
+		yield return new WaitForSeconds(0.5f);
+		playerInfo[who].SetAnimState(AnimState.idle);
+		yield return new WaitForSeconds(cam.ZoomOut());
+
+		playerInfo[who].transformCount++;
 	}
 
 	private void CheckSomeoneLeaveGame()
@@ -452,37 +576,12 @@ public class InGame : MonoBehaviour
 			isCommandComplete[Who.p2] = true;
 			isBattleEnd[Who.p1] = true;
 			isBattleEnd[Who.p2] = true;
+			isMapEvent = true;
+
 			deadPlayerList.Add(leavePlayerList[0]);
 			isGameEnd = true;
 			isDraw = false;
 			isLeaveEnd = true;
-		}
-	}
-
-	#endregion
-
-	private void GetMessage(string json)
-	{
-		//Debug.Log("데이터 수신 : " + json);
-
-		Msg tempMsg = JsonUtility.FromJson<Msg>(json);
-		switch (tempMsg.type)
-		{
-			case Msg.MsgType.gameStart:
-				GameStartMsg gsm = JsonUtility.FromJson<GameStartMsg>(json);
-				sessionId[gsm.sender] = gsm.sessionId;
-				playingCType[gsm.sender] = gsm.cType;
-				isGameStart[gsm.sender] = true;
-				break;
-			case Msg.MsgType.commandComplete:
-				CommandCompleteMsg ccm = JsonUtility.FromJson<CommandCompleteMsg>(json);
-				commandList[ccm.sender] = ccm.ToCommandList();
-				isCommandComplete[ccm.sender] = true;
-				break;
-			case Msg.MsgType.battleEnd:
-				BattleEndMsg bem = JsonUtility.FromJson<BattleEndMsg>(json);
-				isBattleEnd[bem.sender] = true;
-				break;
 		}
 	}
 
@@ -521,6 +620,43 @@ public class InGame : MonoBehaviour
 		StopCommand(who, true);
 		playerInfo[who].animator.SetInteger("state", 3);
 	}
+
+	#endregion
+
+	private void GetMessage(string json)
+	{
+		Msg tempMsg = JsonUtility.FromJson<Msg>(json);
+		//Debug.Log(tempMsg.type.ToString() + "수신 : " + json);
+
+		switch (tempMsg.type)
+		{
+			case Msg.MsgType.gameStart:
+				GameStartMsg gsm = JsonUtility.FromJson<GameStartMsg>(json);
+				sessionId[gsm.sender] = gsm.sessionId;
+				playingCType[gsm.sender] = gsm.cType;
+				isGameStart[gsm.sender] = true;
+				matchRecord[gsm.sender] = (gsm.play, gsm.win);
+				break;
+			case Msg.MsgType.commandComplete:
+				CommandCompleteMsg ccm = JsonUtility.FromJson<CommandCompleteMsg>(json);
+				commandList[ccm.sender] = ccm.ToCommandList();
+				isCommandComplete[ccm.sender] = true;
+				break;
+			case Msg.MsgType.battleEnd:
+				BattleEndMsg bem = JsonUtility.FromJson<BattleEndMsg>(json);
+				isBattleEnd[bem.sender] = true;
+				break;
+			case Msg.MsgType.mapEvent:
+				MapEventMsg mem = JsonUtility.FromJson<MapEventMsg>(json);
+				curMapEvent = mem.mapEvent;
+				curMapEventPos.x = mem.x;
+				curMapEventPos.y = mem.y;
+				isMapEvent = true;
+				break;
+		}
+	}
+
+	#region Instantiate / Destroy
 
 	public void InstantiateAttackRange(Who commander, (int x, int y) pos, float destroyTime)
 	{
@@ -567,24 +703,6 @@ public class InGame : MonoBehaviour
 		Destroy(obj);
 	}
 
-	private int GetPlayerEndTime(Who who)
-	{
-		int index = 0;
-		while (index < 10)
-		{
-			if (!commandList.ContainsKey(who))
-				break;
+	#endregion
 
-			if (commandList[who][index].id.Equals(CommandId.Empty))
-			{
-				break;
-			}
-			else
-			{
-				index += commandList[who][index].time;
-			}
-		}
-
-		return index;
-	}
 }

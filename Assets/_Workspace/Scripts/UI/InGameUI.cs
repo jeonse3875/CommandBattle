@@ -18,6 +18,7 @@ public class InGameUI : MonoBehaviour
 	public Text text_Nickname;
 	public Image image_ClassIcon;
 	public Text text_ClassName;
+	public Text text_MatchRecord;
 
 	public GameObject group_CommandUI;
 
@@ -70,6 +71,11 @@ public class InGameUI : MonoBehaviour
 
 	private int curResource = 0;
 
+	private void Start()
+	{
+		image_Blind.gameObject.SetActive(true);
+	}
+
 	private void Update()
 	{
 		if (isTimerActive)
@@ -100,7 +106,7 @@ public class InGameUI : MonoBehaviour
 	public void StartMakingCommand()
 	{
 		SetActiveCommandUI();
-		Invoke("StartTimer", 2f);
+		StartTimer();
 		LightEffect();
 	}
 
@@ -149,6 +155,7 @@ public class InGameUI : MonoBehaviour
 			image_ClassIcon.gameObject.SetActive(false);
 			text_ClassName.text = "";
 			text_Nickname.text = "";
+			text_MatchRecord.text = "";
 			return;
 		}
 
@@ -161,6 +168,15 @@ public class InGameUI : MonoBehaviour
 				
 		text_ClassName.text = Command.GetKoreanClassName(InGame.instance.playingCType[who]);
 		image_ClassIcon.sprite = Command.GetClassIcon(InGame.instance.playingCType[who]);
+
+		var record = InGame.instance.matchRecord[who];
+		float winRate = 0;
+		if (!record.play.Equals(0))
+		{
+			winRate = record.win / (float)record.play;
+			winRate = Mathf.Round(winRate * 1000) / 10;
+		}
+		text_MatchRecord.text = string.Format("{0}게임 {1}승 ({2}%)", record.play, record.win, winRate);
 	}
 
 	public void InitializeVariable()

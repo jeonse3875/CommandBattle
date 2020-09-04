@@ -1,4 +1,5 @@
 ﻿using BackEnd;
+using BackEnd.Tcp;
 using LitJson;
 using System;
 using System.Collections.Generic;
@@ -6,7 +7,7 @@ using UnityEngine;
 
 public enum Table
 {
-	command
+	command, matchRecord
 }
 
 public class UserInfo : MonoBehaviour
@@ -27,6 +28,15 @@ public class UserInfo : MonoBehaviour
 	public ClassType playingClass = ClassType.knight;
 
 	public bool isUpdatedCommandData = false;
+	public bool isUpdatedRecordData = false;
+
+	public string nickname;
+	public int totalGamePlay;
+	public int totalWin;
+	public float winRate = 0f;
+
+	public Dictionary<ClassType, (int play, int win)> matchRecord = new Dictionary<ClassType, (int play, int win)>();
+
 
 	private void Awake()
 	{
@@ -55,6 +65,8 @@ public class UserInfo : MonoBehaviour
 	{
 		if(isUpdatedCommandData)
 			UploadCommandInfo();
+		if (isUpdatedRecordData)
+			UploadRecordInfo();
 	}
 
 	private void OnApplicationPause(bool pause)
@@ -63,6 +75,8 @@ public class UserInfo : MonoBehaviour
 		{
 			if (isUpdatedCommandData)
 				UploadCommandInfo();
+			if (isUpdatedRecordData)
+				UploadRecordInfo();
 		}
 	}
 
@@ -71,6 +85,9 @@ public class UserInfo : MonoBehaviour
 		//BackendManager.instance.NewUserEvent += GiveAllCommand; // Test
 		BackendManager.instance.DetectNewTableEvent += InitializeNewTable;
 		BackendManager.instance.DetectExistingTableEvent += AddIndate;
+		BackendManager.instance.CreateNicknameEvent += UpdateNicknameInfo;
+		BackendManager.instance.UpdateNicknameEvent += UpdateNicknameInfo;
+		BackendManager.instance.UpdateUserInfoEvent += UpdateTotalRecordInfo;
 	}
 
 	public void RemoveHandler()
@@ -78,6 +95,9 @@ public class UserInfo : MonoBehaviour
 		//BackendManager.instance.NewUserEvent -= GiveAllCommand; // Test
 		BackendManager.instance.DetectNewTableEvent -= InitializeNewTable;
 		BackendManager.instance.DetectExistingTableEvent -= AddIndate;
+		BackendManager.instance.CreateNicknameEvent -= UpdateNicknameInfo;
+		BackendManager.instance.UpdateNicknameEvent -= UpdateNicknameInfo;
+		BackendManager.instance.UpdateUserInfoEvent -= UpdateTotalRecordInfo;
 	}
 
 	private void InitializeNewTable(string tableName)
@@ -90,6 +110,8 @@ public class UserInfo : MonoBehaviour
 			case Table.command:
 				param.Add("ownCommand");
 				param.Add("mountedCommand");
+				break;
+			default:
 				break;
 		}
 		tableInDate[table] = BackendManager.instance.InsertData(tableName, param);
@@ -164,6 +186,58 @@ public class UserInfo : MonoBehaviour
 		param.Add(ownCommandCol, ownParam);
 		param.Add(mountedCommandCol, mountedParam);
 		BackendManager.instance.UpdateData(Table.command.ToString(), tableInDate[Table.command], param);
+	}
+
+	public void UpdateRecordInfo()
+	{
+		JsonData recordData = BackendManager.instance.GetPrivateData(Table.matchRecord.ToString());
+
+		foreach (ClassType cType in Enum.GetValues(typeof(ClassType)))
+		{
+			if (cType.Equals(ClassType.common))
+				continue;
+
+			JsonData classRecord;
+			try
+			{
+				classRecord = recordData[cType.ToString()];
+			}
+			catch (KeyNotFoundException)
+			{
+				matchRecord[cType] = (0, 0);
+				continue;
+			}
+
+			try
+			{
+				(int play, int win) record;
+				record.play = int.Parse(classRecord["M"]["play"]["N"].ToString());
+				record.win = int.Parse(classRecord["M"]["win"]["N"].ToString());
+				matchRecord[cType] = (record.play, record.win);
+			}
+			catch (KeyNotFoundException)
+			{
+				Debug.Log(classRecord.ToJson());
+			}
+		}
+
+		isUpdatedRecordData = true;
+		Debug.Log("전적 정보 업데이트 완료");
+	}
+
+	public void UploadRecordInfo()
+	{
+		Param param = new Param();
+
+		foreach(var cType in matchRecord.Keys)
+		{
+			Param cParam = new Param();
+			cParam.Add("play", matchRecord[cType].play);
+			cParam.Add("win", matchRecord[cType].win);
+			param.Add(cType.ToString(), cParam);
+		}
+
+		BackendManager.instance.UpdateData(Table.matchRecord.ToString(), tableInDate[Table.matchRecord], param);
 	}
 
 	public void GiveDefaultCommand()
@@ -280,6 +354,28 @@ public class UserInfo : MonoBehaviour
 		foreach(var del in UpdateMountInfoEvent.GetInvocationList())
 		{
 			UpdateMountInfoEvent -= (updateCommandInfoEventHandler)del;
+		}
+	}
+
+	public void UpdateNicknameInfo(bool isSuccess)
+	{
+		if(isSuccess)
+		{
+			nickname = BackendManager.instance.GetMyNickname();
+		}
+	}
+
+	public void UpdateTotalRecordInfo(MatchUserGameRecord record)
+	{
+		if(record.m_nickname.Equals(nickname))
+		{
+			totalGamePlay = record.m_numberOfMatches;
+			totalWin = record.m_numberOfWin;
+			if(!totalGamePlay.Equals(0))
+			{
+				winRate = totalWin / (float)totalGamePlay;
+				winRate = Mathf.Round(winRate * 1000) / 10;
+			}
 		}
 	}
 }

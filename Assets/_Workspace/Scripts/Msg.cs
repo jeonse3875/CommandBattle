@@ -5,7 +5,7 @@ public class Msg
 {
 	public enum MsgType
 	{
-		none, gameStart, commandComplete, battleEnd, dead
+		none, gameStart, commandComplete, battleEnd, mapEvent
 	}
 
 	public Who sender;
@@ -24,11 +24,16 @@ public class GameStartMsg : Msg
 {
 	public SessionId sessionId;
 	public ClassType cType;
+	public int play;
+	public int win;
+
 	public GameStartMsg() : base()
 	{
 		type = MsgType.gameStart;
 		sessionId = BackendManager.instance.GetMySessionId();
 		cType = UserInfo.instance.playingClass;
+		play = UserInfo.instance.matchRecord[cType].play;
+		win = UserInfo.instance.matchRecord[cType].win;
 	}
 }
 
@@ -65,5 +70,20 @@ public class BattleEndMsg : Msg
 	public BattleEndMsg() : base()
 	{
 		type = MsgType.battleEnd;
+	}
+}
+
+public class MapEventMsg : Msg
+{
+	public MapEvent mapEvent;
+	public int x;
+	public int y;
+
+	public MapEventMsg(MapEvent mapEvent, (int x, int y) pos) : base()
+	{
+		type = MsgType.mapEvent;
+		this.mapEvent = mapEvent;
+		this.x = pos.x;
+		this.y = pos.y;
 	}
 }

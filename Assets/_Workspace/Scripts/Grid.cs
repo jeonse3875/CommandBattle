@@ -166,6 +166,19 @@ public class Grid
 
 		return (Direction)index;
 	}
+
+	public (int x, int y) ChooseRandomPos(List<(int x, int y)> exceptList)
+	{
+		(int x, int y) pos = (0, 0);
+
+		do
+		{
+			pos.x = Random.Range(0, sizeX);
+			pos.y = Random.Range(0, sizeY);
+		} while (exceptList.Contains(pos));
+
+		return pos;
+	}
 }
 
 public enum DirectionType
