@@ -2,7 +2,8 @@
 
 public class MapEventPickUp : MonoBehaviour
 {
-	public static int pickUpCount = 0;
+	public static int curPickUpCount = 0;
+	public static int totalPickUpCount = 0;
 
 	private MapEvent mapEvent;
 	private (int x, int y) pos;
@@ -11,12 +12,13 @@ public class MapEventPickUp : MonoBehaviour
 
 	private void Start()
 	{
-		pickUpCount++;
+		curPickUpCount++;
+		totalPickUpCount++;
 	}
 
 	private void OnDestroy()
 	{
-		pickUpCount--;
+		curPickUpCount--;
 	}
 
 	private void Update()

@@ -54,7 +54,9 @@ public class CommandSet
 			int leftTime = command.time - 1;
 			for (int i = 0; i < leftTime; i++)
 			{
-				commandArray[index++] = new EmptyCommand();
+				var emptyCommand = new EmptyCommand();
+				emptyCommand.commander = command.commander;
+				commandArray[index++] = emptyCommand;
 			}
 		}
 
@@ -112,11 +114,22 @@ public class CommandSet
 		}
 		return count;
 	}
+
+	public void SetCommander(Who who)
+	{
+		foreach (var command in commandList)
+			command.commander = who;
+	}
 }
 
 public enum ClassType
 {
 	common, knight, werewolf, hunter, witch,
+}
+
+public enum BossType
+{
+	none, mechGolem, demon
 }
 
 public enum CommandId
@@ -218,6 +231,24 @@ public class Command
 		}
 
 		return className;
+	}
+
+	public static string GetKoreanBossName(BossType bType)
+	{
+		string name = "";
+		switch (bType)
+		{
+			case BossType.mechGolem:
+				name = "메카 골렘";
+				break;
+			case BossType.demon:
+				name = "데몬";
+				break;
+			default:
+				break;
+		}
+
+		return name;
 	}
 
 	public PlayerInfo GetCommanderInfo()

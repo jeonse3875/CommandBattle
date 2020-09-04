@@ -5,6 +5,11 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+public enum GameMode
+{
+	bossRush, OneOnOne
+}
+
 public enum Who
 {
 	none, p1, p2
@@ -69,6 +74,10 @@ public class InGame : MonoBehaviour
 	public MapEvent curMapEvent;
 	public (int x, int y) curMapEventPos;
 
+	private BossType curBoss = BossType.none;
+	CommandSet bossCommandSet = new CommandSet();
+	public int bossStage = 1;
+
 	#region LifeCycle
 
 	private void Start()
@@ -80,7 +89,15 @@ public class InGame : MonoBehaviour
 
 		AddHandler();
 		inGameUI = GetComponent<InGameUI>();
-		StartCoroutine(GameRoutine());
+
+		if(UserInfo.instance.playingGameMode.Equals(GameMode.OneOnOne))
+		{
+			StartCoroutine(OneOnOneGameRoutine());
+		}
+		else if (UserInfo.instance.playingGameMode.Equals(GameMode.bossRush))
+		{
+			StartCoroutine(BossRushGameRoutine());
+		}
 	}
 
 	private void LateUpdate()
@@ -115,8 +132,19 @@ public class InGame : MonoBehaviour
 
 		if (!deadPlayerList.Count.Equals(0) && !isGameEnd)
 		{
-			isGameEnd = true;
-			isDraw = deadPlayerList.Count.Equals(2);
+			if (UserInfo.instance.playingGameMode.Equals(GameMode.OneOnOne))
+			{
+				isGameEnd = true;
+				isDraw = deadPlayerList.Count.Equals(2);
+			}
+			else
+			{
+				if (deadPlayerList.Contains(Who.p1))
+				{
+					isGameEnd = true;
+				}
+				deadPlayerList.Clear();
+			}
 		}
 	}
 
@@ -139,9 +167,9 @@ public class InGame : MonoBehaviour
 
 	#endregion
 
-	#region 게임루틴
+	#region 1대1 게임루틴
 
-	private IEnumerator GameRoutine()
+	private IEnumerator OneOnOneGameRoutine()
 	{
 		var waitGameStart = new WaitUntil(IsGameStart);
 		var waitCommandComplete = new WaitUntil(IsCommandComplete);
@@ -234,7 +262,7 @@ public class InGame : MonoBehaviour
 		AddPassive(Who.p1);
 		AddPassive(Who.p2);
 
-		MapEventPickUp.pickUpCount = 0;
+		MapEventPickUp.curPickUpCount = 0;
 
 		inGameUI.InitializeGame();
 	}
@@ -349,11 +377,19 @@ public class InGame : MonoBehaviour
 			playerInfo[Who.p2].TakeDamage(poisonDamage, poisonDamage);
 		}
 
-		yield return StartCoroutine(WerewolfTransform(Who.p1));
-		yield return StartCoroutine(WerewolfTransform(Who.p2));
+		if (UserInfo.instance.playingGameMode.Equals(GameMode.OneOnOne))
+		{
+			yield return StartCoroutine(WerewolfTransform(Who.p1));
+			yield return StartCoroutine(WerewolfTransform(Who.p2));
 
+			BackendManager.instance.SendData(new BattleEndMsg());
+		}
+		else
+		{
+			yield return StartCoroutine(WerewolfTransform(Who.p1));
+			isBattleEnd[Who.p1] = true;
+		}
 
-		BackendManager.instance.SendData(new BattleEndMsg());
 		yield return new WaitForSeconds(2f);
 	}
 
@@ -382,7 +418,7 @@ public class InGame : MonoBehaviour
 		if (UnityEngine.Random.Range(0, 1f) > 0.65f)
 			return noEvent;
 
-		if (MapEventPickUp.pickUpCount >= 1)
+		if (MapEventPickUp.curPickUpCount >= 1)
 			return noEvent;
 
 		int eventCount = Enum.GetValues(typeof(MapEvent)).Length;
@@ -619,6 +655,215 @@ public class InGame : MonoBehaviour
 		yield return null;
 		StopCommand(who, true);
 		playerInfo[who].animator.SetInteger("state", 3);
+	}
+
+	#endregion
+
+	#region 보스러쉬 게임루틴
+
+	private IEnumerator BossRushGameRoutine()
+	{
+		var waitCommandComplete = new WaitUntil(()=> { return isCommandComplete[Who.p1]; });
+		var waitBattleEnd = new WaitUntil(() => { return isBattleEnd[Who.p1]; });
+		var waitMapEvent = new WaitUntil(() => { return isMapEvent; });
+
+		me = Who.p1;
+
+		InitializeGame_BossRush();
+		yield return new WaitForSeconds(inGameUI.DoFadeOut());
+
+		// P2 소개
+		yield return new WaitForSeconds(cam.ZoomInTarget(playerInfo[Who.p1].tr.position));
+		inGameUI.IntroducePlayer_BossRush(Who.p1);
+		yield return new WaitForSeconds(2f);
+		inGameUI.IntroducePlayer_BossRush(Who.none);
+
+		// 게임 시작
+		yield return new WaitForSeconds(cam.ZoomOut());
+
+		while (!isGameEnd)
+		{
+			InitializeVariable_BossRush();
+			StartMakingCommand();
+			MakeBossCommand();
+			yield return waitCommandComplete;
+			StartBattle();
+			yield return waitBattleEnd;
+			if (!isGameEnd)
+			{
+				if (playerInfo[Who.p2].isDead)
+				{
+					yield return StartCoroutine(SpawnNextBoss());
+				}
+				else
+				{
+					ChooseMapEvent_BossRush();
+					yield return StartCoroutine(ApplyMapEvent());
+				}
+			}
+		}
+		yield return StartCoroutine(EndGame_BossRush());
+	}
+
+	private void InitializeGame_BossRush()
+	{
+		Debug.Log("보스러쉬 초기화");
+		playingCType[Who.p1] = UserInfo.instance.playingClass;
+		curBoss = ChooseRandomBoss();
+
+		grid = new Grid(5, 5, 5f, new Vector3(-10, 0, -10));
+		playerNickname = BackendManager.instance.nickname;
+		opponentNickname = Command.GetKoreanBossName(curBoss);
+		GameObject obj_P1 = Instantiate(Resources.Load<GameObject>("Character/" + UserInfo.instance.playingClass.ToString() + "_Blue"));
+		GameObject obj_P2 = Instantiate(Resources.Load<GameObject>("Character/Boss/" + curBoss.ToString()));
+		playerInfo[Who.p1] = new PlayerInfo(Who.p1, (0, 2), obj_P1.transform);
+		playerInfo[Who.p2] = new PlayerInfo(Who.p2, (4, 2), obj_P2.transform);
+		playerInfo[Who.p1].LookEnemy();
+		playerInfo[Who.p2].LookEnemy();
+		particles[Who.p1] = GameObject.Find("Particles_p1").transform;
+		particles[Who.p2] = GameObject.Find("Particles_p2").transform;//임시
+		buffSet[Who.p1] = new BuffSet(Who.p1);
+		buffSet[Who.p2] = new BuffSet(Who.p2);
+		chainBuffList[Who.p1] = new List<Buff>();
+		chainBuffList[Who.p2] = new List<Buff>();
+		effectObj[Who.p1] = new List<GameObject>();
+		effectObj[Who.p2] = new List<GameObject>();
+		commandRoutine[Who.p1] = null;
+		commandRoutine[Who.p2] = null;
+		isCommandHit[Who.p1] = false;
+		isCommandHit[Who.p2] = false;
+		isCommandComplete[Who.p1] = false;
+		isCommandComplete[Who.p2] = false;
+
+		cam.ResetCamera();
+
+		AddPassive(Who.p1);
+
+		MapEventPickUp.curPickUpCount = 0;
+		MapEventPickUp.totalPickUpCount = 0;
+
+		inGameUI.InitializeGame_BossRush();
+	}
+
+	private void InitializeVariable_BossRush()
+	{
+		isBattleEnd[Who.p1] = false;
+		isMapEvent = false;
+		bossCommandSet.Clear();
+
+		inGameUI.InitializeVariable();
+	}
+
+	private void MakeBossCommand()
+	{
+		Command testCommand = new EarthStrikeCommand(Direction.left);
+		testCommand.commander = Who.p2;
+		bossCommandSet.Push(testCommand);
+		// CommandSet 채우기
+
+		while (bossCommandSet.GetTotalTime() < 10)
+		{
+			Command command = new EmptyCommand();
+			bossCommandSet.Push(command);
+		}
+		bossCommandSet.SetCommander(Who.p2);
+
+		var cList = new List<Command>();
+		cList.AddRange(bossCommandSet.GetCommandArray());
+		commandList[Who.p2] = cList;
+	}
+
+	private void ChooseMapEvent_BossRush()
+	{
+		curMapEvent = MapEvent.none;
+
+		if (UnityEngine.Random.Range(0, 1f) > 0.7f)
+			return;
+		if (MapEventPickUp.curPickUpCount >= 1)
+			return;
+		if (MapEventPickUp.totalPickUpCount >= 3 * bossStage)
+			return;
+
+		int eventCount = Enum.GetValues(typeof(MapEvent)).Length;
+		int eventIndex = UnityEngine.Random.Range(1, eventCount);
+		curMapEvent = (MapEvent)eventIndex;
+		List<(int x, int y)> playersPos = new List<(int x, int y)> { playerInfo[Who.p1].Pos(), playerInfo[Who.p2].Pos() };
+		curMapEventPos = grid.ChooseRandomPos(playersPos);
+	}
+
+	private IEnumerator SpawnNextBoss()
+	{
+		bossStage++;
+		var beforeBoss = playerInfo[Who.p2].tr.gameObject;
+		foreach (var effect in effectObj[Who.p2])
+		{
+			if (effect != null)
+				Destroy(effect);
+		}
+		effectObj[Who.p2].Clear();
+
+		curBoss = ChooseRandomBoss();
+		opponentNickname = Command.GetKoreanBossName(curBoss);
+
+		GameObject obj = Instantiate(Resources.Load<GameObject>("Character/Boss/" + curBoss.ToString()));
+		playerInfo[Who.p2] = new PlayerInfo(Who.p2, (2, 10), obj.transform);
+		buffSet[Who.p2] = new BuffSet(Who.p2);
+		chainBuffList[Who.p2] = new List<Buff>();
+
+		List<(int x, int y)> spawnPosList = new List<(int x, int y)>() { (0, 2), (2, 4), (4, 2) };
+		spawnPosList.Remove(playerInfo[Who.p1].Pos());
+		int spawnIndex = UnityEngine.Random.Range(0, spawnPosList.Count);
+		(int x, int y) spawnPos = spawnPosList[spawnIndex];
+		(int x, int y) startPos = (-5, 2);
+
+		if(spawnPos == (0,2))
+		{
+			startPos = (-5, 2);
+		}
+		else if(spawnPos == (2,4))
+		{
+			startPos = (2, 9);
+		}
+		else if(spawnPos == (4,2))
+		{
+			startPos = (9, 2);
+		}
+
+		playerInfo[Who.p2].tr.position = grid.PosToVec3(startPos);
+		var spawnVec = grid.PosToVec3(spawnPos);
+		playerInfo[Who.p2].tr.LookAt(spawnVec);
+		playerInfo[Who.p2].tr.DOMove(spawnVec, 3f).SetEase(Ease.Linear);
+		playerInfo[Who.p2].SetAnimState(AnimState.run);
+
+		yield return new WaitForSeconds(2.3f);
+		Destroy(beforeBoss);
+		yield return new WaitForSeconds(0.7f);
+		playerInfo[Who.p2].SetAnimState(AnimState.idle);
+		yield return new WaitForSeconds(1f);
+	}
+
+	private IEnumerator EndGame_BossRush()
+	{
+		bool isHighScore = bossStage > UserInfo.instance.bossRushRecord[UserInfo.instance.playingClass];
+		if (isHighScore)
+		{
+			UserInfo.instance.bossRushRecord[UserInfo.instance.playingClass] = bossStage;
+		}
+
+		yield return new WaitForSeconds(cam.ZoomInTarget(playerInfo[me].tr.position));
+		inGameUI.SetMatchResultUI_BossRush(isHighScore);
+	}
+
+	private BossType ChooseRandomBoss()
+	{
+		int bossCount = Enum.GetValues(typeof(BossType)).Length;
+		int index;
+		do
+		{
+			index = UnityEngine.Random.Range(1, bossCount);
+		} while (((BossType)index).Equals(curBoss));
+
+		return (BossType)index;
 	}
 
 	#endregion

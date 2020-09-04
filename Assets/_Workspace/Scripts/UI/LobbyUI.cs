@@ -275,18 +275,20 @@ public class LobbyUI : MonoBehaviour
 
 	public void Button_StartRandomMatchMaking()
 	{
+		UserInfo.instance.playingGameMode = GameMode.OneOnOne;
 		BackendManager.instance.JoinMatchingServer();
 		group_PlayingClass.SetActive(true);
-	}
-
-	public void RequestRandomMatchMaking()
-	{
-		BackendManager.instance.CreateMatchRoom(MatchType.Random, MatchModeType.OneOnOne, randomOneOnOneIndate);
 	}
 
 	public void Button_CancelMatchmaking()
 	{
 		BackendManager.instance.CancelMatchMaking();
+	}
+
+	public void Button_GoToBossRush()
+	{
+		UserInfo.instance.playingGameMode = GameMode.bossRush;
+		group_PlayingClass.SetActive(true);
 	}
 
 	public void Button_GoToItem()
@@ -382,6 +384,26 @@ public class LobbyUI : MonoBehaviour
 	}
 
 	#endregion
+
+	public void StartSelectGameMode()
+	{
+		switch (UserInfo.instance.playingGameMode)
+		{
+			case GameMode.bossRush:
+				GoToInGameScene();
+				break;
+			case GameMode.OneOnOne:
+				RequestRandomMatchMaking();
+				break;
+			default:
+				break;
+		}
+	}
+
+	private void RequestRandomMatchMaking()
+	{
+		BackendManager.instance.CreateMatchRoom(MatchType.Random, MatchModeType.OneOnOne, randomOneOnOneIndate);
+	}
 
 	private void InitializeCommandInfoUI()
 	{

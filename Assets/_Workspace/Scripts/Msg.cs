@@ -17,6 +17,9 @@ public class Msg
 			sender = Who.p1;
 		else
 			sender = Who.p2;
+
+		if (UserInfo.instance.playingGameMode.Equals(GameMode.bossRush))
+			sender = Who.p1;
 	}
 }
 

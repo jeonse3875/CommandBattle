@@ -25,6 +25,7 @@ public class UserInfo : MonoBehaviour
 	public delegate void userInfoErrorEventHandler(string message, ForWhat what);
 	public event userInfoErrorEventHandler UserInfoErrorEvent;
 
+	public GameMode playingGameMode;
 	public ClassType playingClass = ClassType.knight;
 
 	public bool isUpdatedCommandData = false;
@@ -36,7 +37,7 @@ public class UserInfo : MonoBehaviour
 	public float winRate = 0f;
 
 	public Dictionary<ClassType, (int play, int win)> matchRecord = new Dictionary<ClassType, (int play, int win)>();
-
+	public Dictionary<ClassType, int> bossRushRecord = new Dictionary<ClassType, int>();
 
 	private void Awake()
 	{
@@ -85,8 +86,6 @@ public class UserInfo : MonoBehaviour
 		//BackendManager.instance.NewUserEvent += GiveAllCommand; // Test
 		BackendManager.instance.DetectNewTableEvent += InitializeNewTable;
 		BackendManager.instance.DetectExistingTableEvent += AddIndate;
-		BackendManager.instance.CreateNicknameEvent += UpdateNicknameInfo;
-		BackendManager.instance.UpdateNicknameEvent += UpdateNicknameInfo;
 		BackendManager.instance.UpdateUserInfoEvent += UpdateTotalRecordInfo;
 	}
 
@@ -95,8 +94,6 @@ public class UserInfo : MonoBehaviour
 		//BackendManager.instance.NewUserEvent -= GiveAllCommand; // Test
 		BackendManager.instance.DetectNewTableEvent -= InitializeNewTable;
 		BackendManager.instance.DetectExistingTableEvent -= AddIndate;
-		BackendManager.instance.CreateNicknameEvent -= UpdateNicknameInfo;
-		BackendManager.instance.UpdateNicknameEvent -= UpdateNicknameInfo;
 		BackendManager.instance.UpdateUserInfoEvent -= UpdateTotalRecordInfo;
 	}
 
@@ -205,6 +202,7 @@ public class UserInfo : MonoBehaviour
 			catch (KeyNotFoundException)
 			{
 				matchRecord[cType] = (0, 0);
+				bossRushRecord[cType] = 0;
 				continue;
 			}
 
@@ -213,6 +211,7 @@ public class UserInfo : MonoBehaviour
 				(int play, int win) record;
 				record.play = int.Parse(classRecord["M"]["play"]["N"].ToString());
 				record.win = int.Parse(classRecord["M"]["win"]["N"].ToString());
+				bossRushRecord[cType] = int.Parse(classRecord["M"]["bossRush"]["N"].ToString());
 				matchRecord[cType] = (record.play, record.win);
 			}
 			catch (KeyNotFoundException)
@@ -234,6 +233,8 @@ public class UserInfo : MonoBehaviour
 			Param cParam = new Param();
 			cParam.Add("play", matchRecord[cType].play);
 			cParam.Add("win", matchRecord[cType].win);
+			cParam.Add("bossRush", bossRushRecord[cType]);
+			
 			param.Add(cType.ToString(), cParam);
 		}
 
@@ -357,12 +358,9 @@ public class UserInfo : MonoBehaviour
 		}
 	}
 
-	public void UpdateNicknameInfo(bool isSuccess)
+	public void UpdateNicknameInfo()
 	{
-		if(isSuccess)
-		{
-			nickname = BackendManager.instance.GetMyNickname();
-		}
+		nickname = BackendManager.instance.nickname;
 	}
 
 	public void UpdateTotalRecordInfo(MatchUserGameRecord record)

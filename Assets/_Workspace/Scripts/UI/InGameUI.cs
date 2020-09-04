@@ -37,6 +37,7 @@ public class InGameUI : MonoBehaviour
 	private float leftTime;
 	private bool isCompleted = false;
 	public Text text_Timer;
+	public Text text_Stage;
 
 	public Slider capacitySlider;
 	public Text setCapicity;
@@ -74,6 +75,7 @@ public class InGameUI : MonoBehaviour
 	private void Start()
 	{
 		image_Blind.gameObject.SetActive(true);
+		text_Stage.text = "";
 	}
 
 	private void Update()
@@ -106,8 +108,9 @@ public class InGameUI : MonoBehaviour
 	public void StartMakingCommand()
 	{
 		SetActiveCommandUI();
-		StartTimer();
 		LightEffect();
+		if (UserInfo.instance.playingGameMode.Equals(GameMode.OneOnOne))
+			StartTimer();
 	}
 
 	public void LightEffect()
@@ -123,7 +126,9 @@ public class InGameUI : MonoBehaviour
 
 	public void InitializeGame()
 	{
-		if (BackendManager.instance.isP1)
+		playerCommandSet = new CommandSet();
+
+		if (InGame.instance.me.Equals(Who.p1))
 		{
 			text_Nickname_P1.text = InGame.instance.playerNickname;
 			text_Nickname_P2.text = InGame.instance.opponentNickname;
@@ -146,11 +151,31 @@ public class InGameUI : MonoBehaviour
 		IntroducePlayer(Who.none);
 	}
 
+	public void InitializeGame_BossRush()
+	{
+		text_Timer.gameObject.SetActive(false);
+		playerCommandSet = new CommandSet();
+
+		text_Nickname_P1.text = InGame.instance.playerNickname;
+		text_Nickname_P2.text = InGame.instance.opponentNickname;
+
+		UpdateHealth(Who.p1);
+		UpdateHealth(Who.p2);
+
+		resourcePanel_P1.SetPanel(UserInfo.instance.playingClass);
+		resourcePanel_P2.SetPanel(ClassType.common);
+
+		button_ViewLastBattle.SetActive(false);
+		button_BackToCommandUI.SetActive(false);
+
+		IntroducePlayer(Who.none);
+	}
+
 	public void IntroducePlayer(Who who)
 	{
 		group_Introduce.SetActive(true);
 
-		if(who.Equals(Who.none))
+		if (who.Equals(Who.none))
 		{
 			image_ClassIcon.gameObject.SetActive(false);
 			text_ClassName.text = "";
@@ -165,7 +190,7 @@ public class InGameUI : MonoBehaviour
 			text_Nickname.text = InGame.instance.playerNickname;
 		else
 			text_Nickname.text = InGame.instance.opponentNickname;
-				
+
 		text_ClassName.text = Command.GetKoreanClassName(InGame.instance.playingCType[who]);
 		image_ClassIcon.sprite = Command.GetClassIcon(InGame.instance.playingCType[who]);
 
@@ -179,10 +204,41 @@ public class InGameUI : MonoBehaviour
 		text_MatchRecord.text = string.Format("{0}게임 {1}승 ({2}%)", record.play, record.win, winRate);
 	}
 
+	public void IntroducePlayer_BossRush(Who who)
+	{
+		group_Introduce.SetActive(true);
+
+		if (who.Equals(Who.none))
+		{
+			image_ClassIcon.gameObject.SetActive(false);
+			text_ClassName.text = "";
+			text_Nickname.text = "";
+			text_MatchRecord.text = "";
+			return;
+		}
+
+		image_ClassIcon.gameObject.SetActive(true);
+
+		if (InGame.instance.me.Equals(who))
+			text_Nickname.text = InGame.instance.playerNickname;
+		else
+			text_Nickname.text = InGame.instance.opponentNickname;
+
+		text_ClassName.text = Command.GetKoreanClassName(InGame.instance.playingCType[who]);
+		image_ClassIcon.sprite = Command.GetClassIcon(InGame.instance.playingCType[who]);
+
+		int highScore = UserInfo.instance.bossRushRecord[UserInfo.instance.playingClass];
+		text_MatchRecord.text = string.Format("최고 기록 : Stage {0}", highScore);
+	}
+
 	public void InitializeVariable()
 	{
+		playerCommandSet.Clear();
+		text_Nickname_P2.text = InGame.instance.opponentNickname; //보스용
+		UpdateHealth(Who.p2); //보스용
+		text_Stage.text = "Stage\n" + InGame.instance.bossStage.ToString(); //보스용
+
 		group_Introduce.SetActive(false);
-		playerCommandSet = new CommandSet();
 		curResource = InGame.instance.playerInfo[InGame.instance.me].Resource;
 		UpdateCapacity();
 		InitializeCommandButton();
@@ -230,10 +286,18 @@ public class InGameUI : MonoBehaviour
 			playerCommandSet.Push(new EmptyCommand());
 		}
 
-		CommandCompleteMsg ccm = playerCommandSet.ToCCM();
-		BackendManager.instance.SendData(ccm);
+		if (UserInfo.instance.playingGameMode.Equals(GameMode.OneOnOne))
+		{
+			CommandCompleteMsg ccm = playerCommandSet.ToCCM();
+			BackendManager.instance.SendData(ccm);
 
-		SetActiveWaitingUI();
+			SetActiveWaitingUI();
+		}
+		else
+		{
+			InGame.instance.commandList[Who.p1] = playerCommandSet.ToCCM().ToCommandList();
+			InGame.instance.isCommandComplete[Who.p1] = true;
+		}
 	}
 
 	public void Button_CancelDirUI()
@@ -291,12 +355,12 @@ public class InGameUI : MonoBehaviour
 
 		int index = 0;
 
-		foreach(var image in pushedCommandList)
+		foreach (var image in pushedCommandList)
 		{
 			image.gameObject.SetActive(false);
 		}
 
-		foreach(var command in playerCommandSet.commandList)
+		foreach (var command in playerCommandSet.commandList)
 		{
 			var image = pushedCommandList[index];
 			image.sprite = command.GetCommandIcon();
@@ -379,7 +443,7 @@ public class InGameUI : MonoBehaviour
 
 	private void UpdateCommandButton()
 	{
-		foreach(CommandButton button in commandButtons)
+		foreach (CommandButton button in commandButtons)
 		{
 			if (!button.gameObject.activeSelf)
 				break;
@@ -446,7 +510,7 @@ public class InGameUI : MonoBehaviour
 
 	public void InstantiateBattleLog(Command command, string message)
 	{
-		GameObject obj; 
+		GameObject obj;
 		if (command.commander.Equals(Who.p1))
 			obj = Instantiate(logBlock, logParentTr_P1);
 		else
@@ -460,7 +524,7 @@ public class InGameUI : MonoBehaviour
 	public void ClearBattleLog()
 	{
 		button_BackToCommandUI.SetActive(false);
-		foreach(var log in logList)
+		foreach (var log in logList)
 			Destroy(log);
 		logList.Clear();
 	}
@@ -477,7 +541,7 @@ public class InGameUI : MonoBehaviour
 			return;
 		}
 
-		if(isLeaveEnd)
+		if (isLeaveEnd)
 		{
 			text_LeaveEnd.gameObject.SetActive(true);
 		}
@@ -492,6 +556,25 @@ public class InGameUI : MonoBehaviour
 		else
 		{
 			text_WinOrLose.text = "패배";
+			group_ChangePhase.SetActive(true);
+			image_LightBackground.DOFade(0.5f, 3f);
+		}
+	}
+
+	public void SetMatchResultUI_BossRush(bool isHighScore)
+	{
+		group_MatchResult.SetActive(true);
+
+		if (isHighScore)
+		{
+			text_WinOrLose.text = "신기록!!";
+			group_ChangePhase.SetActive(true);
+			image_LightBackground.DOFade(0.5f, 0.5f);
+			image_Light.transform.DOScale(1f, 0.5f).SetEase(Ease.OutCirc);
+		}
+		else
+		{
+			text_WinOrLose.text = "종료";
 			group_ChangePhase.SetActive(true);
 			image_LightBackground.DOFade(0.5f, 3f);
 		}

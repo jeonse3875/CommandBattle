@@ -45,6 +45,8 @@ public class BackendManager : MonoBehaviour
 	public delegate void detectExistingTableEventHandler(string tableName, string inDate);
 	public event detectExistingTableEventHandler DetectExistingTableEvent;
 
+	public string nickname;
+
 	#endregion
 
 	#region [Lobby] 매칭서버 필드
@@ -296,6 +298,7 @@ public class BackendManager : MonoBehaviour
 			if (callback.IsSuccess())
 			{
 				Debug.Log("닉네임 생성 성공");
+				this.nickname = nickname;
 				if (NewUserEvent != null)
 					NewUserEvent();
 			}
@@ -338,6 +341,7 @@ public class BackendManager : MonoBehaviour
 
 			if (callback.IsSuccess())
 			{
+				this.nickname = nickname;
 				Debug.Log("닉네임 수정 성공");
 			}
 			else
@@ -426,6 +430,7 @@ public class BackendManager : MonoBehaviour
 			}
 			else
 			{
+				nickname = userNickname.ToString();
 				if (NicknameExistEvent != null)
 					NicknameExistEvent();
 			}
@@ -663,6 +668,7 @@ public class BackendManager : MonoBehaviour
 	#endregion
 
 	#region 인게임서버: 인게임서버 접속/종료, 게임룸 접속
+
 	public void JoinGameServer(string address, ushort port)
 	{
 		if (isJoinGameServer)
