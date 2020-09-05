@@ -127,11 +127,6 @@ public enum ClassType
 	common, knight, werewolf, hunter, witch,
 }
 
-public enum BossType
-{
-	none, mechGolem, demon
-}
-
 public enum CommandId
 {
 	//공용
@@ -172,6 +167,9 @@ public class Command
 
 	public Tween movingTween;
 
+	public BossType bossType = BossType.common;
+	public BossCommandId bossId;
+
 	public Command(CommandId id, string name, int time, int limit, int totalDamage, DirectionType dirType, ClassType classType)
 	{
 		this.id = id;
@@ -183,6 +181,16 @@ public class Command
 		this.classType = classType;
 
 		isPreview = false;
+	}
+
+	public Command(BossCommandId bossId, string name, int time, int totalDamage, DirectionType dirType, BossType bossType)
+	{
+		this.bossId = bossId;
+		this.name = name;
+		this.time = time;
+		this.totalDamage = totalDamage;
+		this.dirType = dirType;
+		this.bossType = bossType;
 	}
 
 	public void SetPreview(Grid grid, PlayerInfo player, PlayerInfo enemy, Transform particles, (BuffSet set1, BuffSet set2) buffSet)
@@ -393,7 +401,10 @@ public class Command
 
 	public Sprite GetCommandIcon()
 	{
-		return Resources.Load<Sprite>("CommandIcon/" + id.ToString());
+		if (!id.Equals(CommandId.Empty))
+			return Resources.Load<Sprite>("CommandIcon/" + id.ToString());
+		else
+			return Resources.Load<Sprite>("CommandIcon/Boss/" + bossId.ToString());
 	}
 
 	public static Sprite GetClassIcon(ClassType cType)

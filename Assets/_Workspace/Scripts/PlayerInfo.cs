@@ -118,7 +118,6 @@ public class PlayerInfo
 
 			HP -= takenDamage;
 			InGame.instance.buffSet[me].UpdateCount(CountType.takeDamage, -1);
-			Debug.Log(string.Format("'{0}'이 {1}의 피해를 입음", me.ToString(), takenDamage.ToString()));
 			InGame.instance.InstantiateDamageTMP(tr, takenDamage.ToString(), mode, isMultiple);
 			InGame.instance.inGameUI.UpdateHealth(me);
 
@@ -154,7 +153,7 @@ public class PlayerInfo
 
 			Resource += resourceByDealDamage;
 
-			if (InGame.instance.playingCommand[me].id.Equals(id))
+			if (InGame.instance.playingCommand.ContainsKey(me) && InGame.instance.playingCommand[me].id.Equals(id))
 				InGame.instance.isCommandHit[me] = true;
 		}
 
@@ -218,4 +217,5 @@ public enum AnimState
 	rapidShot = 17, flipShot = 18, startHunting = 19, hunterTrap = 20, paralyticArrow = 21,
 	paralysis = 22, vanish = 23, curseStiff = 24, cursePoison = 25, spellFireExplosion = 26,
 	spellLightning = 27, escapeSpell = 28, sniping = 29, sweep = 30, thornShield = 31,
+	giantSwing = 32, bossRun = 33,
 }

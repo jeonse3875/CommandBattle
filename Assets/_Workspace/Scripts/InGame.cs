@@ -74,7 +74,7 @@ public class InGame : MonoBehaviour
 	public MapEvent curMapEvent;
 	public (int x, int y) curMapEventPos;
 
-	private BossType curBoss = BossType.none;
+	private BossType curBoss = BossType.common;
 	CommandSet bossCommandSet = new CommandSet();
 	public int bossStage = 1;
 
@@ -329,7 +329,11 @@ public class InGame : MonoBehaviour
 				playingCommand[Who.p1] = commandList[Who.p1][currentTime];
 			}
 
-			if (commandList[Who.p2][currentTime].id.Equals(CommandId.Empty))
+			if (UserInfo.instance.playingGameMode.Equals(GameMode.OneOnOne)
+				&& commandList[Who.p2][currentTime].id.Equals(CommandId.Empty))
+				StartCoroutine(commandList[Who.p2][currentTime].Execute());
+			else if (UserInfo.instance.playingGameMode.Equals(GameMode.bossRush)
+				&& commandList[Who.p2][currentTime].bossId.Equals(BossCommandId.Empty))
 				StartCoroutine(commandList[Who.p2][currentTime].Execute());
 			else
 			{
@@ -554,7 +558,8 @@ public class InGame : MonoBehaviour
 			if (!commandList.ContainsKey(who))
 				break;
 
-			if (commandList[who][index].id.Equals(CommandId.Empty))
+			if (commandList[who][index].id.Equals(CommandId.Empty)
+				&& commandList[who][index].bossId.Equals(BossCommandId.Empty))
 			{
 				break;
 			}
@@ -636,8 +641,10 @@ public class InGame : MonoBehaviour
 			if (commandRoutine[who] != null)
 				StopCoroutine(commandRoutine[who]);
 
-			if (playingCommand.ContainsKey(who) && playingCommand[who].movingTween != null)
+			if (playingCommand.ContainsKey(who))
+			{
 				playingCommand[who].movingTween.Kill();
+			}
 			
 			return true;
 		}
@@ -654,7 +661,7 @@ public class InGame : MonoBehaviour
 	{
 		yield return null;
 		StopCommand(who, true);
-		playerInfo[who].animator.SetInteger("state", 3);
+		playerInfo[who].animator.SetInteger("state", (int)AnimState.death);
 	}
 
 	#endregion
@@ -756,14 +763,16 @@ public class InGame : MonoBehaviour
 
 	private void MakeBossCommand()
 	{
-		Command testCommand = new EarthStrikeCommand(Direction.left);
-		testCommand.commander = Who.p2;
-		bossCommandSet.Push(testCommand);
+		Command testCommand1 = new GiantSwingCommand(Direction.left);
+		Command testCommand2 = new BossMoveCommand(Direction.left);
+		bossCommandSet.Push(testCommand1);
+		bossCommandSet.Push(testCommand2);
+		bossCommandSet.Push(testCommand1);
 		// CommandSet 채우기
 
 		while (bossCommandSet.GetTotalTime() < 10)
 		{
-			Command command = new EmptyCommand();
+			Command command = new BossEmptyCommand();
 			bossCommandSet.Push(command);
 		}
 		bossCommandSet.SetCommander(Who.p2);
@@ -818,22 +827,22 @@ public class InGame : MonoBehaviour
 
 		if(spawnPos == (0,2))
 		{
-			startPos = (-5, 2);
+			startPos = (-4, 2);
 		}
 		else if(spawnPos == (2,4))
 		{
-			startPos = (2, 9);
+			startPos = (2, 8);
 		}
 		else if(spawnPos == (4,2))
 		{
-			startPos = (9, 2);
+			startPos = (8, 2);
 		}
 
 		playerInfo[Who.p2].tr.position = grid.PosToVec3(startPos);
 		var spawnVec = grid.PosToVec3(spawnPos);
 		playerInfo[Who.p2].tr.LookAt(spawnVec);
 		playerInfo[Who.p2].tr.DOMove(spawnVec, 3f).SetEase(Ease.Linear);
-		playerInfo[Who.p2].SetAnimState(AnimState.run);
+		playerInfo[Who.p2].SetAnimState(AnimState.bossRun);
 
 		yield return new WaitForSeconds(2.3f);
 		Destroy(beforeBoss);
