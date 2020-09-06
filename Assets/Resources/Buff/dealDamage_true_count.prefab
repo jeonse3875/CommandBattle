@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 7816323411947451091}
   - component: {fileID: 7978042500705954997}
   - component: {fileID: 7976118562313623587}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: FX_Fire_Big_01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4505,7 +4505,7 @@ GameObject:
   - component: {fileID: 7816015467816906379}
   - component: {fileID: 7978094781267062211}
   - component: {fileID: 7977364568246936543}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: FX_Fire_Embers_01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -8997,7 +8997,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7815611278811505439}
   - component: {fileID: -6445896889960488389}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: dealDamage_true_count
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -9044,6 +9044,10 @@ PrefabInstance:
     - target: {fileID: 1348259950162714, guid: ad2a14fee6aa4b34da25fe2ab5e9aa7b, type: 3}
       propertyPath: m_Name
       value: SM_Wep_Sword_Small_02 (2)
+      objectReference: {fileID: 0}
+    - target: {fileID: 1348259950162714, guid: ad2a14fee6aa4b34da25fe2ab5e9aa7b, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 4714933827498358, guid: ad2a14fee6aa4b34da25fe2ab5e9aa7b, type: 3}
       propertyPath: m_LocalPosition.x
@@ -9124,6 +9128,10 @@ PrefabInstance:
     - target: {fileID: 1348259950162714, guid: ad2a14fee6aa4b34da25fe2ab5e9aa7b, type: 3}
       propertyPath: m_Name
       value: SM_Wep_Sword_Small_02 (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 1348259950162714, guid: ad2a14fee6aa4b34da25fe2ab5e9aa7b, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 4714933827498358, guid: ad2a14fee6aa4b34da25fe2ab5e9aa7b, type: 3}
       propertyPath: m_LocalPosition.x

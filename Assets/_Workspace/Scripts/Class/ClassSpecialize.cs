@@ -14,7 +14,6 @@ public class ClassSpecialize : MonoBehaviour
 
 	private bool isTransform = false;
 
-
 	public virtual void Initialize()
 	{
 		SetDefault();
@@ -139,5 +138,10 @@ public class ClassSpecialize : MonoBehaviour
 	{
 		WeaponSetActive(true);
 		visiblePart.SetActive(true);
+	}
+
+	public virtual CommandSet GetBossPattern()
+	{
+		return new CommandSet();
 	}
 }

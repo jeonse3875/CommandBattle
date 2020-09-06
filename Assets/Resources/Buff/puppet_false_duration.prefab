@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2342247850679168299}
   - component: {fileID: 7327317001782525262}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: puppet_false_duration
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -58,7 +58,7 @@ GameObject:
   - component: {fileID: 3806590117568833220}
   - component: {fileID: 3899310591043287202}
   - component: {fileID: 3898512688402910260}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: FX_Fire_Big_04
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4552,7 +4552,7 @@ GameObject:
   - component: {fileID: 3806247125448063644}
   - component: {fileID: 3899400254999738836}
   - component: {fileID: 3900077691254405064}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: FX_Fire_Embers_01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -9046,7 +9046,7 @@ GameObject:
   - component: {fileID: 2261281984582784682}
   - component: {fileID: 4034992980982774233}
   - component: {fileID: 8403801018932768248}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Cube (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -9139,7 +9139,7 @@ GameObject:
   - component: {fileID: 1681088028340402262}
   - component: {fileID: 6205387502582199932}
   - component: {fileID: 7857119639281613777}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}

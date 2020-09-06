@@ -15,11 +15,6 @@ public enum Who
 	none, p1, p2
 }
 
-public enum MapEvent
-{
-	none = 0, heal, damageBonus,
-}
-
 public class InGame : MonoBehaviour
 {
 	public static InGame instance;
@@ -72,6 +67,7 @@ public class InGame : MonoBehaviour
 	private bool skipFirstMapEvent = true;
 
 	public MapEvent curMapEvent;
+	public BossMapEvent curMapEvent_Boss;
 	public (int x, int y) curMapEventPos;
 
 	private BossType curBoss = BossType.common;
@@ -298,7 +294,7 @@ public class InGame : MonoBehaviour
 		if (isLeaveEnd)
 			yield break;
 
-		yield return new WaitForSeconds(2.5f);
+		yield return new WaitForSeconds(2f);
 
 		int endTime = Mathf.Max(GetPlayerEndTime(Who.p1), GetPlayerEndTime(Who.p2));
 
@@ -705,7 +701,7 @@ public class InGame : MonoBehaviour
 				else
 				{
 					ChooseMapEvent_BossRush();
-					yield return StartCoroutine(ApplyMapEvent());
+					yield return StartCoroutine(ApplyMapEvent_BossRush());
 				}
 			}
 		}
@@ -728,7 +724,7 @@ public class InGame : MonoBehaviour
 		playerInfo[Who.p1].LookEnemy();
 		playerInfo[Who.p2].LookEnemy();
 		particles[Who.p1] = GameObject.Find("Particles_p1").transform;
-		particles[Who.p2] = GameObject.Find("Particles_p2").transform;//임시
+		particles[Who.p2] = GameObject.Find("Particles_p2").transform;
 		buffSet[Who.p1] = new BuffSet(Who.p1);
 		buffSet[Who.p2] = new BuffSet(Who.p2);
 		chainBuffList[Who.p1] = new List<Buff>();
@@ -763,12 +759,7 @@ public class InGame : MonoBehaviour
 
 	private void MakeBossCommand()
 	{
-		Command testCommand1 = new GiantSwingCommand(Direction.left);
-		Command testCommand2 = new BossMoveCommand(Direction.left);
-		bossCommandSet.Push(testCommand1);
-		bossCommandSet.Push(testCommand2);
-		bossCommandSet.Push(testCommand1);
-		// CommandSet 채우기
+		bossCommandSet = playerInfo[Who.p2].specialize.GetBossPattern();
 
 		while (bossCommandSet.GetTotalTime() < 10)
 		{
@@ -784,7 +775,7 @@ public class InGame : MonoBehaviour
 
 	private void ChooseMapEvent_BossRush()
 	{
-		curMapEvent = MapEvent.none;
+		curMapEvent_Boss = BossMapEvent.none;
 
 		if (UnityEngine.Random.Range(0, 1f) > 0.7f)
 			return;
@@ -793,11 +784,33 @@ public class InGame : MonoBehaviour
 		if (MapEventPickUp.totalPickUpCount >= 3 * bossStage)
 			return;
 
-		int eventCount = Enum.GetValues(typeof(MapEvent)).Length;
+		int eventCount = Enum.GetValues(typeof(BossMapEvent)).Length;
 		int eventIndex = UnityEngine.Random.Range(1, eventCount);
-		curMapEvent = (MapEvent)eventIndex;
+		curMapEvent_Boss = (BossMapEvent)eventIndex;
 		List<(int x, int y)> playersPos = new List<(int x, int y)> { playerInfo[Who.p1].Pos(), playerInfo[Who.p2].Pos() };
 		curMapEventPos = grid.ChooseRandomPos(playersPos);
+	}
+
+	private IEnumerator ApplyMapEvent_BossRush()
+	{
+		GameObject pickUp = Resources.Load<GameObject>(string.Format("MapEvent/MapEvent_{0}", curMapEvent_Boss.ToString()));
+		Vector3 targetVec = grid.PosToVec3(curMapEventPos);
+		if (pickUp != null)
+			pickUp = Instantiate(pickUp, targetVec + Vector3.up * 23f, Quaternion.identity);
+
+		switch (curMapEvent_Boss)
+		{
+			case BossMapEvent.heal:
+			case BossMapEvent.damageBonus:
+			case BossMapEvent.maxHP:
+				pickUp.transform.DOMove(targetVec, 2f).SetEase(Ease.OutCubic);
+				pickUp.GetComponent<MapEventPickUp>().SetPickUp(curMapEvent_Boss, curMapEventPos);
+				yield return new WaitForSeconds(2.3f);
+				break;
+			default:
+				break;
+		}
+
 	}
 
 	private IEnumerator SpawnNextBoss()

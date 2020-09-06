@@ -14,11 +14,11 @@ public class Trap : MonoBehaviour
 
 	private Animator animator;
 	private float timer = 0f;
-	private PlayerInfo targetInfo;
-	private PlayerInfo commanderInfo;
 	private bool canActive = true;
 
 	private LobbyUI lobby;
+
+	private PlayerInfo player;
 
 	public void SetTrap((int x, int y) pos, Who target, int damage, Buff deBuff, bool isPreview = false)
 	{
@@ -37,21 +37,25 @@ public class Trap : MonoBehaviour
 		if (isPreview)
 		{
 			lobby = GameObject.Find("LobbyUI").GetComponent<LobbyUI>();
-			targetInfo = lobby.pre_Enemy;
-			commanderInfo = lobby.pre_Player;
+			player = lobby.pre_Player;
 		}
 		else
 		{
-			targetInfo = InGame.instance.playerInfo[target];
-			commanderInfo = InGame.instance.playerInfo[commander];
+			InGame.instance.playerInfo[target] = InGame.instance.playerInfo[target];
+			player = InGame.instance.playerInfo[commander];
 		}
 	}
 
 	private void Update()
 	{
-		if (timer > 0.3f)
+		if (timer > 0.3f && canActive)
 		{
-			if(canActive && targetInfo.Pos().Equals(pos))
+			if (isPreview)
+			{
+				StartCoroutine(Active());
+				canActive = false;
+			}
+			else if (InGame.instance.playerInfo[target].Pos().Equals(pos))
 			{
 				StartCoroutine(Active());
 				canActive = false;
@@ -69,25 +73,18 @@ public class Trap : MonoBehaviour
 		animator.SetBool("state", true);
 		yield return new WaitForSeconds(0.1f);
 
-		if (targetInfo.Pos().Equals(pos))
+		if (isPreview)
 		{
-			targetInfo.TakeDamage(damage, damage);
+			deBuff.isPreview = true;
+			lobby.pre_BuffSet2.Add(deBuff);
+		}
+		else if (InGame.instance.playerInfo[target].Pos().Equals(pos))
+		{
+			InGame.instance.playerInfo[target].TakeDamage(damage, damage);
 
 			if (deBuff != null)
 			{
-				if (isPreview)
-				{
-					deBuff.isPreview = true;
-
-					if (target.Equals(Who.p1))
-						lobby.pre_BuffSet1.Add(deBuff);
-					else
-						lobby.pre_BuffSet2.Add(deBuff);
-				}
-				else
-				{
-					InGame.instance.buffSet[target].Add(deBuff);
-				}
+				InGame.instance.buffSet[target].Add(deBuff);
 			}
 		}
 

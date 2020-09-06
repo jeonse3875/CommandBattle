@@ -106,8 +106,6 @@ public class Grid
 		Vector3 relativeVec = vec - zeroPoint;
 		int x = Mathf.RoundToInt(relativeVec.x / gridSize);
 		int y = Mathf.RoundToInt(relativeVec.z / gridSize);
-		x = Mathf.Clamp(x, 0, sizeX - 1);
-		y = Mathf.Clamp(y, 0, sizeX - 1);
 
 		return (x, y);
 	}
@@ -178,6 +176,29 @@ public class Grid
 		} while (exceptList.Contains(pos));
 
 		return pos;
+	}
+
+	public Direction GetSimilarDirection((int x,int y) playerPos, (int x, int y) targetPos, DirectionType dirType)
+	{
+		var dirPos = SubtractPos(targetPos, playerPos);
+		if (dirPos.x != 0)
+			dirPos.x /= Mathf.Abs(dirPos.x);
+		if (dirPos.y != 0)
+			dirPos.y /= Mathf.Abs(dirPos.y);
+
+		Direction dir = PosToDir(dirPos);
+
+		if (dirType.Equals(DirectionType.cross) && (int)dir % 2 == 1)
+			dir = (Direction)(((int)dir + 1) % 8);
+		else if (dirType.Equals(DirectionType.diagonal) && (int)dir % 2 == 0)
+			dir = (Direction)(((int)dir + 1) % 8);
+
+		return dir;
+	}
+
+	public static Direction DirOper(Direction dir, int amount)
+	{
+		return (Direction)(((int)dir + amount + 8) % 8);
 	}
 }
 

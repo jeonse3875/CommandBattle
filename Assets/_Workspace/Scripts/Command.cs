@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class CommandSet
 {
@@ -130,7 +131,7 @@ public enum ClassType
 public enum CommandId
 {
 	//공용
-	Empty, Move, Guard, HealPotion,
+	Empty = 0, Move, Guard, HealPotion,
 	//기사
 	EarthStrike, WhirlStrike, CombatReady, EarthWave, Charge, ThornShield,
 	//늑대인간
@@ -166,6 +167,8 @@ public class Command
 	public BuffSet pre_BuffSet2;
 
 	public Tween movingTween;
+	public (int x, int y) predictPos = (0, 0);
+	public bool canPredict = true;
 
 	public BossType bossType = BossType.common;
 	public BossCommandId bossId;
@@ -266,6 +269,11 @@ public class Command
 		return InGame.instance.playerInfo[commander];
 	}
 
+	public PlayerInfo GetClientPlayerInfo()
+	{
+		return InGame.instance.playerInfo[InGame.instance.me];
+	}
+
 	public PlayerInfo GetEnemyInfo()
 	{
 		if (isPreview)
@@ -336,6 +344,8 @@ public class Command
 	public ParticleSystem GetEffect(int num = 0)
 	{
 		string effectName = id.ToString();
+		if (id.Equals(CommandId.Empty))
+			effectName = bossId.ToString();
 		if (!num.Equals(0))
 			effectName += num.ToString();
 
@@ -436,10 +446,11 @@ public class Command
 		}
 	}
 
-	public int Hit(int damage, bool isMultiple = false)
+	public int Hit(int damage, bool isMultiple = false, bool isBattleLog = true)
 	{
 		int realDamage = GetCommanderInfo().DealDamage(id, damage, isMultiple);
-		BattleLog(string.Format("{0}의 피해", realDamage.ToString()));
+		if (isBattleLog)
+			BattleLog(string.Format("{0}의 피해", realDamage.ToString()));
 		return realDamage;
 	}
 
@@ -505,6 +516,7 @@ public class MoveCommand : Command
 		this.dir = dir;
 		description = "전방으로 한 칸 이동합니다.";
 		previewPos = ((1, 2), (3, 2));
+		predictPos = (0, 1);
 	}
 
 	public override IEnumerator Execute()
@@ -775,6 +787,8 @@ public class ChargeCommand : Command
 		description = "3칸 돌진합니다. 부딪힌 적에게 피해를 입히고 자신도 반동 피해를 입습니다. " +
 			"공격당한 적은 경직 상태가 되고 한 칸 밀려납니다.";
 		previewPos = ((0, 2), (3, 2));
+		predictPos = (0, 3);
+		canPredict = false;
 	}
 
 	public override IEnumerator Execute()
@@ -947,6 +961,14 @@ public class LeapAttackCommand : Command
 		this.dir = dir;
 		description = "빠르게 도약하여 적을 공격합니다. 늑대 상태에서는 도약 거리가 증가합니다. 모든 방향으로 사용이 가능합니다.";
 		previewPos = ((0, 2), (3, 2));
+
+		if (SceneManager.GetActiveScene().name.Equals("Lobby"))
+			return;
+
+		if (GetClientPlayerInfo().transformCount.Equals(0))
+			predictPos = (0, 1);
+		else
+			predictPos = (0, 2);
 	}
 
 	public override IEnumerator Execute()
@@ -1178,6 +1200,7 @@ public class SweepCommand : Command
 		this.dir = dir;
 		description = "전방으로 두 칸 이동하며 주위의 적을 공격합니다. 늑대 상태에서는 적을 경직시킵니다.";
 		previewPos = ((1, 2), (2, 3));
+		predictPos = (0, 2);
 	}
 
 	public override IEnumerator Execute()
@@ -1278,7 +1301,8 @@ public class RapidShotCommand : Command
 		var enemy = GetEnemyInfo();
 		while (progress < duration)
 		{
-			if (grid.Vec3ToPos(effect1.transform.position).Equals(enemy.Pos()))
+			var projectilePos = grid.Vec3ToPos(effect1.transform.position);
+			if (attackArea.Contains(projectilePos) && projectilePos.Equals(enemy.Pos()))
 			{
 				Hit(totalDamage);
 				effect2.transform.position = enemy.tr.position;
@@ -1304,6 +1328,7 @@ public class FlipShotCommand : Command
 		this.dir = dir;
 		description = "전방의 적을 공격하며 뒤로 후퇴합니다.";
 		previewPos = ((1, 2), (3, 2));
+		predictPos = (0, -1);
 	}
 
 	public override IEnumerator Execute()
@@ -1783,6 +1808,7 @@ public class EscapeSpellCommand : Command
 	{
 		description = "반경 1칸 이내에 적이 있으면 반대 방향으로 2칸 순간이동 합니다. 적이 없다면 20 회복합니다.";
 		previewPos = ((2, 2), (3, 2));
+		canPredict = false;
 	}
 
 	public override IEnumerator Execute()
@@ -1821,7 +1847,7 @@ public class EscapeSpellCommand : Command
 			Restore(20);
 		}
 
-		yield return new WaitForSeconds(0.95f);
+		yield return new WaitForSeconds(0.88f);
 		SetAnimState(AnimState.idle);
 	}
 }

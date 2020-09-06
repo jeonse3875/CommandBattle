@@ -217,5 +217,5 @@ public enum AnimState
 	rapidShot = 17, flipShot = 18, startHunting = 19, hunterTrap = 20, paralyticArrow = 21,
 	paralysis = 22, vanish = 23, curseStiff = 24, cursePoison = 25, spellFireExplosion = 26,
 	spellLightning = 27, escapeSpell = 28, sniping = 29, sweep = 30, thornShield = 31,
-	giantSwing = 32, bossRun = 33,
+	giantSwing = 32, bossRun = 33, incineration = 34, jumpAttack = 35, spinSwing = 36,
 }

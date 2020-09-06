@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 9210494519381185029}
   - component: {fileID: 2033394063870679702}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: vanish_true_count
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -55,7 +55,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5981039479254351400}
   - component: {fileID: 8528493454111280022}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: werewolf
   m_TagString: Untagged
   m_Icon: {fileID: 0}

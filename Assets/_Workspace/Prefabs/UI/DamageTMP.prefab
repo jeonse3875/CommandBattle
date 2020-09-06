@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 6709571426892450307}
   - component: {fileID: 4712648207517767833}
   - component: {fileID: 2693796271761534744}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: DamageTMP
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -239,7 +239,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8077927601888928735}
   - component: {fileID: 5639661472833735821}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Shield-Icon 1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -320,7 +320,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6753676387065757793}
   - component: {fileID: 275723750598976305}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Sword-Icon 1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -403,7 +403,7 @@ GameObject:
   - component: {fileID: 8872018727154100901}
   - component: {fileID: 4385510299395186103}
   - component: {fileID: 4912622864551369045}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: TMP SubMesh [Damage SDF Material + LiberationSans SDF Atlas]
   m_TagString: Untagged
   m_Icon: {fileID: 0}

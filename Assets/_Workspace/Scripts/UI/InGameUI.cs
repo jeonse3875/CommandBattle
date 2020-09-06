@@ -72,6 +72,9 @@ public class InGameUI : MonoBehaviour
 
 	private int curResource = 0;
 
+	public GameObject footStep;
+
+
 	private void Start()
 	{
 		image_Blind.gameObject.SetActive(true);
@@ -247,10 +250,14 @@ public class InGameUI : MonoBehaviour
 
 		button_ViewLastBattle.SetActive(InGame.instance.canViewLastBattle);
 		button_BackToCommandUI.SetActive(true);
+
+		footStep.SetActive(true);
 	}
 
 	public void StartBattle()
 	{
+		footStep.SetActive(false);
+
 		ClearBattleLog();
 		StopTimer();
 		SetActiveBattleTapUI();
@@ -360,13 +367,25 @@ public class InGameUI : MonoBehaviour
 			image.gameObject.SetActive(false);
 		}
 
+		footStep.transform.position = InGame.instance.playerInfo[InGame.instance.me].tr.position;
+		var grid = InGame.instance.grid;
+		var footPos = grid.Vec3ToPos(footStep.transform.position);
+		bool canPredict = true;
 		foreach (var command in playerCommandSet.commandList)
 		{
 			var image = pushedCommandList[index];
 			image.sprite = command.GetCommandIcon();
 			image.gameObject.SetActive(true);
 			index += command.time;
+
+			var pPos = grid.SwitchDir(command.predictPos, command.dir);
+			footPos = grid.AddPos(footPos, pPos, true);
+			if (!command.canPredict)
+				canPredict = false;
 		}
+		footStep.transform.position = grid.PosToVec3(footPos);
+		footStep.transform.GetChild(0).gameObject.SetActive(canPredict);
+		footStep.transform.GetChild(1).gameObject.SetActive(!canPredict);
 	}
 
 	public void UpdateHealth(Who who)

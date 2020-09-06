@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7543606480839107709}
   - component: {fileID: 1106826476944018992}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: targetImage
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -91,7 +91,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7809511598934835676}
   - component: {fileID: 2421487430889564939}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: takeDamage_false_count
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -138,7 +138,7 @@ GameObject:
   - component: {fileID: 7435783358471130082}
   - component: {fileID: 7349784745033635204}
   - component: {fileID: 7347834692181614866}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: FX_Fire_Big_04
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4632,7 +4632,7 @@ GameObject:
   - component: {fileID: 7435457837875320762}
   - component: {fileID: 7349874340127479026}
   - component: {fileID: 7349126810027285230}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: FX_Fire_Embers_01
   m_TagString: Untagged
   m_Icon: {fileID: 0}

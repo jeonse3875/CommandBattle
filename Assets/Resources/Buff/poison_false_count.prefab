@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 6609412007471210026}
   - component: {fileID: 6442935310185113936}
   - component: {fileID: 6443880865295454402}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: FX_Poison_Green_02
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4766,7 +4766,7 @@ GameObject:
   - component: {fileID: 6604318306735606486}
   - component: {fileID: 6442961984903793990}
   - component: {fileID: 6442969271300641264}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: FX_Poison_Green_Smoke_01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -9519,7 +9519,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2320584101520356101}
   - component: {fileID: 4352143509993711187}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: poison_false_count
   m_TagString: Untagged
   m_Icon: {fileID: 0}

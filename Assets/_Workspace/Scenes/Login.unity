@@ -1690,8 +1690,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1b7d1ac0d66c5104cb6bc79f72fb4a9a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  playingGameMode: 0
   playingClass: 0
   isUpdatedCommandData: 0
+  isUpdatedRecordData: 0
+  nickname: 
+  totalGamePlay: 0
+  totalWin: 0
+  winRate: 0
 --- !u!1 &966223015
 GameObject:
   m_ObjectHideFlags: 0
@@ -2659,6 +2665,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a2853ee44e3d1a9499a7a42e2a45bdfe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  nickname: 
+  isInMatchRoom: 0
+  isFriendlyMatch: 0
   isP1: 0
   opponentId: 0
 --- !u!4 &1445798789
