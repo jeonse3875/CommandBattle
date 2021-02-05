@@ -75,6 +75,7 @@ public class LobbyUI : MonoBehaviour
 	public Text text_PDetailHP;
 	public Text text_PassiveName;
 	public TextMeshProUGUI text_PassiveDescription;
+	public Text text_BattlePoint;
 
 	public GameObject pre_AttackRange;
 	public Grid pre_Grid;
@@ -103,6 +104,8 @@ public class LobbyUI : MonoBehaviour
 			UserInfo.instance.UpdateCommandInfo();
 		if (!UserInfo.instance.isUpdatedRecordData)
 			UserInfo.instance.UpdateRecordInfo();
+		if (!UserInfo.instance.isUpdatedMoneyData)
+			UserInfo.instance.UpdateMoneyInfo();
 		UserInfo.instance.GiveAllCommand(); // Test
 		BackendManager.instance.JoinMatchingServer();
 		AddHandler();
@@ -114,6 +117,7 @@ public class LobbyUI : MonoBehaviour
 	{
 		if (Input.GetKeyDown(KeyCode.Escape))
 			Button_GoToExitGame();
+		text_BattlePoint.text = UserInfo.instance.battlePoint.ToString();
 	}
 
 	private void LateUpdate()
@@ -200,7 +204,7 @@ public class LobbyUI : MonoBehaviour
 	{
 		WaitForSeconds wait0 = new WaitForSeconds(0.5f);
 		WaitForSeconds wait1 = new WaitForSeconds(pre_Command.time);
-		WaitForSeconds wait2 = new WaitForSeconds(1.2f);
+		WaitForSeconds wait2 = new WaitForSeconds(0.8f);
 		pre_Player.transformCount = 1;
 
 		while (true)

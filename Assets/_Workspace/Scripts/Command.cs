@@ -451,6 +451,11 @@ public class Command
 		int realDamage = GetCommanderInfo().DealDamage(id, damage, isMultiple);
 		if (isBattleLog)
 			BattleLog(string.Format("{0}의 피해", realDamage.ToString()));
+		if (!isPreview)
+		{
+			if (InGame.instance.me == commander)
+				InGame.instance.totalDamage += realDamage;
+		}
 		return realDamage;
 	}
 
@@ -459,6 +464,11 @@ public class Command
 		ApplyBuff(Enemy(), deBuff);
 		int realDamage = GetCommanderInfo().DealDamage(id, damage, isMultiple);
 		BattleLog(string.Format("{0}의 피해", realDamage.ToString()));
+		if (!isPreview)
+		{
+			if (InGame.instance.me == commander)
+				InGame.instance.totalDamage += realDamage;
+		}
 		return realDamage;
 	}
 

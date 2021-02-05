@@ -51,7 +51,7 @@ public class BossMoveSlowCommand : Command
 		SetAnimState(AnimState.bossRun);
 		movingTween = player.tr.DOMove(targetVec, time).SetEase(Ease.Linear);
 		BattleLog(string.Format("{0} 이동", Grid.DirToKorean(dir)));
-		yield break;
+		yield return new WaitForSeconds(1.95f);
 	}
 }
 

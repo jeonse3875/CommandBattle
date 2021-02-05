@@ -74,6 +74,8 @@ public class InGame : MonoBehaviour
 	CommandSet bossCommandSet = new CommandSet();
 	public int bossStage = 1;
 
+	public int totalDamage = 0;
+
 	#region LifeCycle
 
 	private void Start()
@@ -498,6 +500,7 @@ public class InGame : MonoBehaviour
 			BackendManager.instance.GameEnd(result);
 
 			inGameUI.SetMatchResultUI(false, true);
+			UserInfo.instance.battlePoint += totalDamage;
 		}
 		else
 		{
@@ -520,6 +523,12 @@ public class InGame : MonoBehaviour
 				var record = UserInfo.instance.matchRecord[playingCType[me]];
 				record.win++;
 				UserInfo.instance.matchRecord[playingCType[me]] = record;
+
+				UserInfo.instance.battlePoint += (int)(totalDamage * 1.5f);
+			}
+			else
+			{
+				UserInfo.instance.battlePoint += (int)(totalDamage * 0.5f);
 			}
 		}
 		
@@ -871,7 +880,7 @@ public class InGame : MonoBehaviour
 		{
 			UserInfo.instance.bossRushRecord[UserInfo.instance.playingClass] = bossStage;
 		}
-
+		UserInfo.instance.battlePoint += (bossStage - 1) * 100;
 		yield return new WaitForSeconds(cam.ZoomInTarget(playerInfo[me].tr.position));
 		inGameUI.SetMatchResultUI_BossRush(isHighScore);
 	}

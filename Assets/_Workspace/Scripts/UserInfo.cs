@@ -7,7 +7,7 @@ using UnityEngine;
 
 public enum Table
 {
-	command, matchRecord
+	command, matchRecord, money
 }
 
 public class UserInfo : MonoBehaviour
@@ -30,6 +30,7 @@ public class UserInfo : MonoBehaviour
 
 	public bool isUpdatedCommandData = false;
 	public bool isUpdatedRecordData = false;
+	public bool isUpdatedMoneyData = false;
 
 	public string nickname;
 	public int totalGamePlay;
@@ -38,6 +39,8 @@ public class UserInfo : MonoBehaviour
 
 	public Dictionary<ClassType, (int play, int win)> matchRecord = new Dictionary<ClassType, (int play, int win)>();
 	public Dictionary<ClassType, int> bossRushRecord = new Dictionary<ClassType, int>();
+
+	public int battlePoint;
 
 	private void Awake()
 	{
@@ -68,6 +71,8 @@ public class UserInfo : MonoBehaviour
 			UploadCommandInfo();
 		if (isUpdatedRecordData)
 			UploadRecordInfo();
+		if (isUpdatedMoneyData)
+			UploadMoneyInfo();
 	}
 
 	private void OnApplicationPause(bool pause)
@@ -78,6 +83,8 @@ public class UserInfo : MonoBehaviour
 				UploadCommandInfo();
 			if (isUpdatedRecordData)
 				UploadRecordInfo();
+			if (isUpdatedMoneyData)
+				UploadMoneyInfo();
 		}
 	}
 
@@ -375,5 +382,31 @@ public class UserInfo : MonoBehaviour
 				winRate = Mathf.Round(winRate * 1000) / 10;
 			}
 		}
+	}
+
+	public void UpdateMoneyInfo()
+	{
+		JsonData moneyData = BackendManager.instance.GetPrivateData(Table.money.ToString());
+
+		try
+		{
+			battlePoint = int.Parse(moneyData["battlePoint"]["N"].ToString());
+		}
+		catch (KeyNotFoundException)
+		{
+			battlePoint = 0;
+		}
+
+		Debug.Log("재화 정보 업데이트 완료");
+		isUpdatedMoneyData = true;
+	}
+
+	public void UploadMoneyInfo()
+	{
+		Param param = new Param();
+
+		param.Add("battlePoint", battlePoint);
+
+		BackendManager.instance.UpdateData(Table.money.ToString(), tableInDate[Table.money], param);
 	}
 }

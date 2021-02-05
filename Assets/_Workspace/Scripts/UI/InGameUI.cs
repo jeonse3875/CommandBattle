@@ -30,6 +30,7 @@ public class InGameUI : MonoBehaviour
 
 	public GameObject group_MatchResult;
 	public Text text_WinOrLose;
+	public Text text_MatchSummary;
 
 	public Command currentCommand;
 
@@ -557,6 +558,9 @@ public class InGameUI : MonoBehaviour
 			text_WinOrLose.text = "무승부";
 			group_ChangePhase.SetActive(true);
 			image_LightBackground.DOFade(0.5f, 3f);
+			int totalDamage = InGame.instance.totalDamage;
+			text_MatchSummary.text = string.Format("총 피해량 : {0}\n\n배틀포인트(BP) + {0}"
+				, totalDamage);
 			return;
 		}
 
@@ -571,12 +575,18 @@ public class InGameUI : MonoBehaviour
 			group_ChangePhase.SetActive(true);
 			image_LightBackground.gameObject.SetActive(false);
 			image_Light.transform.DOScale(1f, 0.5f).SetEase(Ease.OutCirc);
+			int totalDamage = InGame.instance.totalDamage;
+			text_MatchSummary.text = string.Format("총 피해량 : {0}\n\n승리 보너스 1.5배\n\n배틀포인트(BP) + {1}"
+				, totalDamage, (int)(totalDamage * 1.5f));
 		}
 		else
 		{
 			text_WinOrLose.text = "패배";
 			group_ChangePhase.SetActive(true);
 			image_LightBackground.DOFade(0.5f, 3f);
+			int totalDamage = InGame.instance.totalDamage;
+			text_MatchSummary.text = string.Format("총 피해량 : {0}\n\n패배 패널티 0.5배\n\n배틀포인트(BP) + {1}"
+				, totalDamage, (int)(totalDamage * 0.5f));
 		}
 	}
 
@@ -597,5 +607,7 @@ public class InGameUI : MonoBehaviour
 			group_ChangePhase.SetActive(true);
 			image_LightBackground.DOFade(0.5f, 3f);
 		}
+		int numOfBoss = InGame.instance.bossStage - 1;
+		text_MatchSummary.text = string.Format("물리친 보스 : {0}\n\n배틀포인트(BP) + {1}", numOfBoss, numOfBoss * 100);
 	}
 }
