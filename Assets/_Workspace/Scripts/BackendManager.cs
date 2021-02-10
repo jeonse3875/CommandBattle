@@ -8,7 +8,7 @@ using System.Text;
 public enum ForWhat
 {
 	none, signUp, autoLogin, login, logout, signOut, createNickname, updateNickname, checkNicknameAvailable, checkNicknameExist,
-	joinMatchingServer, leaveMatchingServer, matchMaking, joinGameServer, joinGameRoom
+	joinMatchingServer, leaveMatchingServer, matchMaking, joinGameServer, joinGameRoom, buyCommand
 }
 
 public class BackendManager : MonoBehaviour

@@ -152,6 +152,7 @@ public class Command
 	public int limit;
 	public int totalDamage;
 	public int costResource = 0;
+	public int price = 0;
 	public DirectionType dirType;
 	public ClassType classType;
 
@@ -742,6 +743,7 @@ public class EarthWaveCommand : Command
 	{
 		description = "지면에 파동을 일으켜 사방의 적을 공격합니다. 피해를 입은 적은 경직 상태가 됩니다.";
 		previewPos = ((2, 2), (4, 0));
+		price = 100;
 	}
 
 	public override IEnumerator Execute()

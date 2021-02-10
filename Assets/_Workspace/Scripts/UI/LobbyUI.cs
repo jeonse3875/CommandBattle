@@ -77,6 +77,12 @@ public class LobbyUI : MonoBehaviour
 	public TextMeshProUGUI text_PassiveDescription;
 	public Text text_BattlePoint;
 
+	public GameObject group_BuyCommand;
+	public Text text_BuyCommandMessage;
+	private Command buyWaitingCommand;
+	[HideInInspector]
+	public CommandInfoBlock buyWaitingCommandInfoBlock;
+
 	public GameObject pre_AttackRange;
 	public Grid pre_Grid;
 	public PlayerInfo pre_Player;
@@ -106,7 +112,7 @@ public class LobbyUI : MonoBehaviour
 			UserInfo.instance.UpdateRecordInfo();
 		if (!UserInfo.instance.isUpdatedMoneyData)
 			UserInfo.instance.UpdateMoneyInfo();
-		UserInfo.instance.GiveAllCommand(); // Test
+		//UserInfo.instance.GiveAllCommand(); // Test
 		BackendManager.instance.JoinMatchingServer();
 		AddHandler();
 		SetPreview();
@@ -387,6 +393,38 @@ public class LobbyUI : MonoBehaviour
 		group_ExitGame.SetActive(false);
 	}
 
+	public void Button_BuyCommand()
+	{
+		bool isEmptyCommand = buyWaitingCommand.id == CommandId.Empty;
+		bool isAlreadyOwn = UserInfo.instance.ownCommands[buyWaitingCommand.classType].Contains(buyWaitingCommand.id);
+		if (isEmptyCommand || isAlreadyOwn)
+		{
+			group_BuyCommand.SetActive(false);
+			GetError("잘못된 커맨드입니다.", ForWhat.buyCommand);
+			return;
+		}
+
+		if(UserInfo.instance.battlePoint < buyWaitingCommand.price)
+		{
+			group_BuyCommand.SetActive(false);
+			GetError("배틀포인트(BP)가 부족합니다.", ForWhat.buyCommand);
+			return;
+		}
+
+		UserInfo.instance.ownCommands[buyWaitingCommand.classType].Add(buyWaitingCommand.id);
+		UserInfo.instance.battlePoint -= buyWaitingCommand.price;
+		UserInfo.instance.UploadCommandInfo();
+		UserInfo.instance.UploadMoneyInfo();
+
+		buyWaitingCommandInfoBlock.SetOwn(true);
+		group_BuyCommand.SetActive(false);
+	}
+
+	public void Button_CloseBuyCommand()
+	{
+		group_BuyCommand.SetActive(false);
+	}
+
 	#endregion
 
 	public void StartSelectGameMode()
@@ -615,5 +653,12 @@ public class LobbyUI : MonoBehaviour
 		yield return new WaitForSeconds(1f);
 
 		SceneManager.LoadScene("InGame");
+	}
+
+	public void GoToBuyCommand(CommandId id)
+	{
+		buyWaitingCommand = Command.FromId(id);
+		group_BuyCommand.SetActive(true);
+		text_BuyCommandMessage.text = string.Format("<b>{0}</b> 배틀포인트(BP)가 필요합니다.\n\n구매하시겠습니까 ?", buyWaitingCommand.price);
 	}
 }

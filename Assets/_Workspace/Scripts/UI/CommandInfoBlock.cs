@@ -17,8 +17,10 @@ public class CommandInfoBlock : MonoBehaviour
     public Text text_Time;
     public Text text_Limit;
     public Text text_Damage;
+    public Text text_Price;
     public GameObject mountButton;
     public GameObject obj_Blind;
+    public int price = 0;
 
     private void AddHandler()
     {
@@ -65,10 +67,17 @@ public class CommandInfoBlock : MonoBehaviour
         }
 
         image_CommandIcon.sprite = command.GetCommandIcon();
+        price = command.price;
+        text_Price.text = string.Format("{0} BP", price);
     }
 
     public void SetOwn(bool isOwn)
     {
+        if(!isOwn && price == 0)
+		{
+            UserInfo.instance.ownCommands[commandCType].Add(id);
+            isOwn = true;
+		}
         mountButton.GetComponent<Button>().interactable = isOwn;
         obj_Blind.SetActive(!isOwn);
     }
@@ -141,6 +150,13 @@ public class CommandInfoBlock : MonoBehaviour
         lobby.group_Detail.SetActive(true);
       
         lobby.StartPreview(command);
+    }
+
+    public void Button_UnlockCommand()
+    {
+        LobbyUI lobby = GameObject.Find("LobbyUI").GetComponent<LobbyUI>();
+        lobby.GoToBuyCommand(id);
+        lobby.buyWaitingCommandInfoBlock = this;
     }
 
     public void SetMountButtonUI(bool status)
