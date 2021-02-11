@@ -423,6 +423,11 @@ public class Command
 		return Resources.Load<Sprite>("ClassIcon/" + cType.ToString());
 	}
 
+	public static Sprite GetBossIcon(BossType bType)
+	{
+		return Resources.Load<Sprite>("BossIcon/" + bType.ToString());
+	}
+
 	public void BattleLog(string message)
 	{
 		if (isPreview)
@@ -473,10 +478,11 @@ public class Command
 		return realDamage;
 	}
 
-	public int Restore(int amount)
+	public int Restore(int amount, bool isBattleLog = true)
 	{
 		int healAmount = GetCommanderInfo().Restore(amount);
-		BattleLog(string.Format("{0} 회복", healAmount.ToString()));
+		if (isBattleLog)
+			BattleLog(string.Format("{0} 회복", healAmount.ToString()));
 		return healAmount;
 	}
 

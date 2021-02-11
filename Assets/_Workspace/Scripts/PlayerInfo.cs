@@ -178,7 +178,8 @@ public class PlayerInfo
 			}
 			else
 			{
-				InGame.instance.InstantiateDamageTMP(tr, amount.ToString(), -2);
+				if (amount != 0)
+					InGame.instance.InstantiateDamageTMP(tr, amount.ToString(), -2);
 
 			}
 		}
@@ -218,4 +219,5 @@ public enum AnimState
 	paralysis = 22, vanish = 23, curseStiff = 24, cursePoison = 25, spellFireExplosion = 26,
 	spellLightning = 27, escapeSpell = 28, sniping = 29, sweep = 30, thornShield = 31,
 	giantSwing = 32, bossRun = 33, incineration = 34, jumpAttack = 35, spinSwing = 36,
+	harvest = 37, darkRedemption = 38,
 }

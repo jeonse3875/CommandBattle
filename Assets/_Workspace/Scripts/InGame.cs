@@ -69,8 +69,8 @@ public class InGame : MonoBehaviour
 	public MapEvent curMapEvent;
 	public BossMapEvent curMapEvent_Boss;
 	public (int x, int y) curMapEventPos;
-
-	private BossType curBoss = BossType.common;
+	[HideInInspector]
+	public BossType curBoss = BossType.common;
 	CommandSet bossCommandSet = new CommandSet();
 	public int bossStage = 1;
 
@@ -894,7 +894,8 @@ public class InGame : MonoBehaviour
 			index = UnityEngine.Random.Range(1, bossCount);
 		} while (((BossType)index).Equals(curBoss));
 
-		return (BossType)index;
+		return BossType.demon;
+		//return (BossType)index;
 	}
 
 	#endregion

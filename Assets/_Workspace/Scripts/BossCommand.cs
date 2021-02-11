@@ -10,7 +10,7 @@ public enum BossType
 
 public enum BossCommandId
 {
-	Empty, BossMoveSlow, GiantSwing, Incineration, JumpAttack, SpinSwing
+	Empty, BossMoveSlow, GiantSwing, Incineration, JumpAttack, SpinSwing, Harvest, DarkRedemption
 }
 
 public class BossEmptyCommand : Command
@@ -54,6 +54,8 @@ public class BossMoveSlowCommand : Command
 		yield return new WaitForSeconds(1.95f);
 	}
 }
+
+#region MechGolem
 
 public class GiantSwingCommand : Command
 {
@@ -135,7 +137,7 @@ public class IncinerationCommand : Command
 		yield return new WaitForSeconds(0.55f);
 		DisplayAttackRange(attackArea, 1f);
 		yield return new WaitForSeconds(1f);
-		BattleLog("소각");
+		BattleLog("주기적인 피해");
 		effect.Play();
 		DOTween.Sequence()
 			.Append(effect.transform.DORotate(origin + new Vector3(0, 35f, 0), 1.25f))
@@ -237,3 +239,97 @@ public class SpinSwingCommand : Command
 		SetAnimState(AnimState.idle);
 	}
 }
+
+#endregion
+
+#region Demon
+
+public class HarvestCommand : Command
+{
+	public HarvestCommand(Direction dir = Direction.right)
+		: base(BossCommandId.Harvest, "수확", 2, 30, DirectionType.cross, BossType.demon)
+	{
+		this.dir = dir;
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Grid grid = GetGrid();
+		var effect = GetEffect();
+		Transform enemyTr = GetEnemyInfo().tr;
+
+		List<(int x, int y)> attackArea = new List<(int x, int y)>() { (0, 1), (-1, 1), (1, 1) };
+		attackArea = CalculateArea(attackArea, player.Pos(), dir);
+		player.tr.LookAt(grid.PosToVec3(attackArea[0]));
+
+		// 수치조정
+		int damage = this.totalDamage;
+		SetAnimState(AnimState.harvest);
+		DisplayAttackRange(attackArea, 0.66f);
+		yield return new WaitForSeconds(0.66f);
+		if (CheckEnemyInArea(attackArea))
+		{
+			int realDamage = Hit(damage);
+			player.Restore(realDamage);
+			effect.transform.position = enemyTr.position;
+			effect.Play();
+		}
+		yield return new WaitForSeconds(0.6f);
+		SetAnimState(AnimState.idle);
+
+		yield break;
+	}
+}
+
+public class DarkRedemption : Command
+{
+	public DarkRedemption(Direction dir = Direction.right)
+		: base(BossCommandId.DarkRedemption, "악의 구원", 7, 5, DirectionType.none, BossType.demon)
+	{
+		this.dir = dir;
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Grid grid = GetGrid();
+		var effect = GetEffect();
+		Transform enemyTr = GetEnemyInfo().tr;
+
+		List<(int x, int y)> attackArea = new List<(int x, int y)>()
+		{ (0, -1), (-1, 1), (0, 1), (1, 1), (-1, 0), (1, 0), (-1, -1), (0, 0), (1, -1) };
+		attackArea = CalculateArea(attackArea, player.Pos(), dir);
+		player.tr.LookAt(grid.PosToVec3(attackArea[0]));
+		effect.transform.position = grid.PosToVec3(player.Pos());
+
+		// 수치조정
+		int damage = this.totalDamage;
+		SetAnimState(AnimState.darkRedemption);
+		player.specialize.HideWeapon(5.85f);
+		DisplayAttackRange(attackArea, 0.4f);
+		yield return new WaitForSeconds(0.35f);
+		BattleLog("주기적인 흡혈");
+		float progress = 0f;
+		effect.Play();
+		var wait = new WaitForSeconds(0.3f);
+		while (progress < 5.2f)
+		{
+			yield return wait;
+			if (CheckEnemyInArea(attackArea))
+			{
+				int realDamage = Hit(totalDamage, true, false);
+				Restore(realDamage, false);
+			}
+			progress += 0.3f;
+		}
+
+		yield return new WaitForSeconds(0.4f);
+		SetAnimState(AnimState.idle);
+		
+
+		yield break;
+	}
+}
+
+#endregion

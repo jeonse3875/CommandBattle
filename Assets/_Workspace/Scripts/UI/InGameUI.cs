@@ -57,6 +57,8 @@ public class InGameUI : MonoBehaviour
 	public Image image_HPBar_P2;
 	public Text text_HP_P1;
 	public Text text_HP_P2;
+	public Image image_ClassIcon_P1;
+	public Image image_ClassIcon_P2;
 
 	public GameObject logBlock;
 	public Transform logParentTr_P1;
@@ -149,6 +151,9 @@ public class InGameUI : MonoBehaviour
 		resourcePanel_P1.SetPanel(InGame.instance.playingCType[Who.p1]);
 		resourcePanel_P2.SetPanel(InGame.instance.playingCType[Who.p2]);
 
+		image_ClassIcon_P1.sprite = Command.GetClassIcon(InGame.instance.playingCType[Who.p1]);
+		image_ClassIcon_P2.sprite = Command.GetClassIcon(InGame.instance.playingCType[Who.p2]);
+
 		button_ViewLastBattle.SetActive(false);
 		button_BackToCommandUI.SetActive(false);
 
@@ -168,6 +173,10 @@ public class InGameUI : MonoBehaviour
 
 		resourcePanel_P1.SetPanel(UserInfo.instance.playingClass);
 		resourcePanel_P2.SetPanel(ClassType.common);
+
+		image_ClassIcon_P1.sprite = Command.GetClassIcon(UserInfo.instance.playingClass);
+		image_ClassIcon_P2.sprite = Command.GetBossIcon(InGame.instance.curBoss);
+
 
 		button_ViewLastBattle.SetActive(false);
 		button_BackToCommandUI.SetActive(false);
@@ -238,9 +247,12 @@ public class InGameUI : MonoBehaviour
 	public void InitializeVariable()
 	{
 		playerCommandSet.Clear();
-		text_Nickname_P2.text = InGame.instance.opponentNickname; //보스용
-		UpdateHealth(Who.p2); //보스용
-		text_Stage.text = "Stage\n" + InGame.instance.bossStage.ToString(); //보스용
+
+		//보스용
+		text_Nickname_P2.text = InGame.instance.opponentNickname; 
+		UpdateHealth(Who.p2);
+		text_Stage.text = "Stage\n" + InGame.instance.bossStage.ToString();
+		image_ClassIcon_P2.sprite = Command.GetBossIcon(InGame.instance.curBoss);
 
 		group_Introduce.SetActive(false);
 		curResource = InGame.instance.playerInfo[InGame.instance.me].Resource;
