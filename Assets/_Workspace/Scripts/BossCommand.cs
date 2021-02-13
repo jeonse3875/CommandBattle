@@ -40,7 +40,7 @@ public class BossMoveSlowCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		var targetPos = (0, 1);
 		targetPos = CalculateArea(targetPos, player.Pos(), dir);
@@ -50,7 +50,7 @@ public class BossMoveSlowCommand : Command
 		player.tr.LookAt(targetVec);
 		SetAnimState(AnimState.bossRun);
 		movingTween = player.tr.DOMove(targetVec, time).SetEase(Ease.Linear);
-		BattleLog(string.Format("{0} 이동", Grid.DirToKorean(dir)));
+		BattleLog(string.Format("{0} 이동", GGrid.DirToKorean(dir)));
 		yield return new WaitForSeconds(1.95f);
 	}
 }
@@ -67,7 +67,7 @@ public class GiantSwingCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		List<(int x, int y)> attackArea = new List<(int x, int y)>() { (0, 1), (0, 2), (0, 3) };
 		attackArea = CalculateArea(attackArea, player.Pos(), dir);
@@ -120,7 +120,7 @@ public class IncinerationCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		List<(int x, int y)> attackArea = new List<(int x, int y)>()
 		{ (0, 1), (0, 2), (-1, 1), (-1, 2), (1, 1), (1, 2), };
@@ -168,7 +168,7 @@ public class JumpAttackCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		Buff unStop = new Buff(BuffCategory.unStoppable, true);
 		unStop.SetDuration(3f);
@@ -211,7 +211,7 @@ public class SpinSwingCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		List<(int x, int y)> attackArea1 = new List<(int x, int y)>() { (-1, 0), (1, 0), (0, -1) };
 		List<(int x, int y)> attackArea2 = new List<(int x, int y)>() { (0, 2), (-1, 1), (1, 1) };
@@ -255,7 +255,7 @@ public class HarvestCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 		var effect = GetEffect();
 		Transform enemyTr = GetEnemyInfo().tr;
 
@@ -293,7 +293,7 @@ public class DarkRedemption : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 		var effect = GetEffect();
 		Transform enemyTr = GetEnemyInfo().tr;
 

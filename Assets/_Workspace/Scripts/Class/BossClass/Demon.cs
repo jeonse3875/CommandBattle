@@ -14,6 +14,9 @@ public class Demon : ClassSpecialize
 		player.dealDamageBonus = 5 * (InGame.instance.bossStage - 1);
 	}
 
+	// 패턴
+	// 1페이즈: 수확, 전투준비, 은신, 경직
+	// 2페이즈: 악의구원
 	public override CommandSet GetBossPattern()
 	{
 		var bossInfo = InGame.instance.playerInfo[Who.p2];
@@ -22,31 +25,25 @@ public class Demon : ClassSpecialize
 
 		float ran = Random.Range(0, 1f);
 
-		return DarkRedemption();
-
-		if (hpp > 0.5f)
+		if (hpp > 0.6f)
 		{
-			if (ran < 0.25f)
-				return MoveSpinSpinSwing();
-			else if (ran < 0.5f)
-				return JumpSpinSwingSwing();
-			else if (ran < 0.75f)
-				return JumpEarthWave();
+			if (ran < 0.4f)
+				return CombatReadyMoveHarvestX2Vanish();
+			else if (ran < 0.8f)
+				return MoveMoveStiffHarvestHarvestVanish();
 			else
-				return SwingSwingSwing();
+				return RandomHarvest();
 		}
 		else
 		{
 			if (ran < 0.5f)
-				return MoveSpinIncineration();
-			else if (ran < 0.75f)
-				return JumpIncineration();
+				return DarkRedemptionVanishMoveMove();
 			else
-				return InciInci();
+				return MoveHarvestDarkRedemption();
 		}
 	}
 
-	private CommandSet HarvestVanish()
+	private CommandSet CombatReadyMoveHarvestX2Vanish()
 	{
 		var bossInfo = InGame.instance.playerInfo[Who.p2];
 		var playerInfo = InGame.instance.playerInfo[Who.p1];
@@ -54,14 +51,66 @@ public class Demon : ClassSpecialize
 
 		CommandSet pattern = new CommandSet();
 		Direction dir1 = grid.GetSimilarDirection(bossInfo.Pos(), playerInfo.Pos(), DirectionType.cross);
+		Direction dir2 = GGrid.RandomDir(DirectionType.cross);
+		Direction dir3 = GGrid.RandomDir(DirectionType.cross);
 
+		pattern.Push(new CombatReadyCommand());
+		pattern.Push(new MoveCommand(dir1));
+		pattern.Push(new HarvestCommand(dir1));
+		pattern.Push(new MoveCommand(dir2));
+		pattern.Push(new HarvestCommand(dir2));
+		pattern.Push(new VanishCommand());
+		pattern.Push(new MoveCommand(dir3));
+
+		return pattern;
+	}
+
+	private CommandSet MoveMoveStiffHarvestHarvestVanish()
+	{
+		var bossInfo = InGame.instance.playerInfo[Who.p2];
+		var playerInfo = InGame.instance.playerInfo[Who.p1];
+		var grid = InGame.instance.grid;
+
+		CommandSet pattern = new CommandSet();
+		Direction dir1 = grid.GetSimilarDirection(bossInfo.Pos(), playerInfo.Pos(), DirectionType.cross);
+		Direction dir2 = GGrid.RandomDir(DirectionType.cross);
+		Direction dir3 = GGrid.RandomDir(DirectionType.cross);
+
+		pattern.Push(new MoveCommand(dir1));
+		pattern.Push(new MoveCommand(dir1));
+		pattern.Push(new CurseStiffCommand());
+		pattern.Push(new HarvestCommand(dir1));
+		pattern.Push(new HarvestCommand(dir2));
+		pattern.Push(new VanishCommand());
+		pattern.Push(new MoveCommand(dir3));
+		pattern.Push(new MoveCommand(dir3));
+
+		return pattern;
+	}
+
+	private CommandSet RandomHarvest()
+	{
+		var bossInfo = InGame.instance.playerInfo[Who.p2];
+		var playerInfo = InGame.instance.playerInfo[Who.p1];
+		var grid = InGame.instance.grid;
+
+		CommandSet pattern = new CommandSet();
+		Direction dir1 = grid.GetSimilarDirection(bossInfo.Pos(), playerInfo.Pos(), DirectionType.cross);
+		Direction dir2 = GGrid.RandomDir(DirectionType.cross);
+		Direction dir3 = GGrid.RandomDir(DirectionType.cross);
+
+
+		pattern.Push(new HarvestCommand(dir1));
+		pattern.Push(new HarvestCommand(dir2));
+		pattern.Push(new MoveCommand(dir3));
+		pattern.Push(new HarvestCommand(dir3));
 		pattern.Push(new HarvestCommand(dir1));
 		pattern.Push(new VanishCommand());
 
 		return pattern;
 	}
 
-	private CommandSet DarkRedemption()
+	private CommandSet MoveHarvestDarkRedemption()
 	{
 		var bossInfo = InGame.instance.playerInfo[Who.p2];
 		var playerInfo = InGame.instance.playerInfo[Who.p1];
@@ -70,16 +119,14 @@ public class Demon : ClassSpecialize
 		CommandSet pattern = new CommandSet();
 		Direction dir1 = grid.GetSimilarDirection(bossInfo.Pos(), playerInfo.Pos(), DirectionType.cross);
 
+		pattern.Push(new MoveCommand(dir1));
 		pattern.Push(new HarvestCommand(dir1));
 		pattern.Push(new DarkRedemption());
 
 		return pattern;
 	}
 
-	#region 예시
-	// 체력 50퍼 이상
-
-	private CommandSet MoveSpinSpinSwing()
+	private CommandSet DarkRedemptionVanishMoveMove()
 	{
 		var bossInfo = InGame.instance.playerInfo[Who.p2];
 		var playerInfo = InGame.instance.playerInfo[Who.p1];
@@ -87,142 +134,13 @@ public class Demon : ClassSpecialize
 
 		CommandSet pattern = new CommandSet();
 		Direction dir1 = grid.GetSimilarDirection(bossInfo.Pos(), playerInfo.Pos(), DirectionType.cross);
-		var nextPos = grid.AddPos(bossInfo.Pos(), grid.SwitchDir((0, 2), dir1));
-		Direction dir2 = grid.GetSimilarDirection(nextPos, playerInfo.Pos(), DirectionType.cross);
+		Direction dir2 = GGrid.RandomDir(DirectionType.cross);
 
-		Command move = new BossMoveSlowCommand(dir1);
-		Command spin1 = new SpinSwingCommand(dir1);
-		Command spin2 = new SpinSwingCommand(dir2);
-		Command swing = new GiantSwingCommand(Grid.OppositeDir(dir2));
-
-		pattern.Push(move);
-		pattern.Push(spin1);
-		pattern.Push(spin2);
-		pattern.Push(swing);
-
-		return pattern;
-	}
-
-	private CommandSet JumpSpinSwingSwing()
-	{
-		var bossInfo = InGame.instance.playerInfo[Who.p2];
-		var playerInfo = InGame.instance.playerInfo[Who.p1];
-		var grid = InGame.instance.grid;
-
-		CommandSet pattern = new CommandSet();
-		Direction dir1 = grid.GetSimilarDirection((2, 2), playerInfo.Pos(), DirectionType.cross);
-		var nextPos = grid.AddPos(bossInfo.Pos(), grid.SwitchDir((0, 1), dir1));
-		Direction dir2 = grid.GetSimilarDirection(nextPos, playerInfo.Pos(), DirectionType.all);
-
-		Command jump = new JumpAttackCommand();
-		Command spin1 = new SpinSwingCommand(dir1);
-		Command swing1 = new GiantSwingCommand(dir2);
-		Command swing2 = new GiantSwingCommand(Grid.DirOper(dir2, +1));
-
-		pattern.Push(jump);
-		pattern.Push(spin1);
-		pattern.Push(swing1);
-		pattern.Push(swing2);
-
-		return pattern;
-	}
-
-	private CommandSet SwingSwingSwing()
-	{
-		var bossInfo = InGame.instance.playerInfo[Who.p2];
-		var playerInfo = InGame.instance.playerInfo[Who.p1];
-		var grid = InGame.instance.grid;
-
-		CommandSet pattern = new CommandSet();
-		Direction dir = grid.GetSimilarDirection(bossInfo.Pos(), playerInfo.Pos(), DirectionType.all);
-
-		Command swing1 = new GiantSwingCommand(dir);
-		Command swing2 = new GiantSwingCommand(Grid.DirOper(dir, -1));
-		Command swing3 = new GiantSwingCommand(Grid.DirOper(dir, +1));
-
-		pattern.Push(swing1);
-		pattern.Push(swing2);
-		pattern.Push(swing3);
-
-		return pattern;
-	}
-
-	private CommandSet JumpEarthWave()
-	{
-		CommandSet pattern = new CommandSet();
-
-		Command jump = new JumpAttackCommand();
-		Command earthWave = new EarthWaveCommand();
-
-		pattern.Push(jump);
-		pattern.Push(earthWave);
-
-		return pattern;
-	}
-
-	// 체력 50퍼 이하
-
-	private CommandSet JumpIncineration()
-	{
-		var bossInfo = InGame.instance.playerInfo[Who.p2];
-		var playerInfo = InGame.instance.playerInfo[Who.p1];
-		var grid = InGame.instance.grid;
-
-		CommandSet pattern = new CommandSet();
-
-		Direction dir = grid.GetSimilarDirection((2, 2), playerInfo.Pos(), DirectionType.cross);
-
-		Command jumpAttack = new JumpAttackCommand();
-		Command Incineration = new IncinerationCommand(dir);
-		Command swing = new GiantSwingCommand(Grid.OppositeDir(dir));
-
-		pattern.Push(jumpAttack);
-		pattern.Push(Incineration);
-		pattern.Push(swing);
-
-		return pattern;
-	}
-
-	private CommandSet MoveSpinIncineration()
-	{
-		var bossInfo = InGame.instance.playerInfo[Who.p2];
-		var playerInfo = InGame.instance.playerInfo[Who.p1];
-		var grid = InGame.instance.grid;
-
-		CommandSet pattern = new CommandSet();
-		Direction dir1 = grid.GetSimilarDirection(bossInfo.Pos(), playerInfo.Pos(), DirectionType.cross);
-		var nextPos = grid.AddPos(bossInfo.Pos(), grid.SwitchDir((0, 2), dir1));
-		Direction dir2 = grid.GetSimilarDirection(nextPos, playerInfo.Pos(), DirectionType.cross);
-
-		Command move = new BossMoveSlowCommand(dir1);
-		Command spin1 = new SpinSwingCommand(dir1);
-		Command inci = new IncinerationCommand(dir2);
-
-		pattern.Push(move);
-		pattern.Push(spin1);
-		pattern.Push(inci);
-
-		return pattern;
-	}
-
-	private CommandSet InciInci()
-	{
-		var bossInfo = InGame.instance.playerInfo[Who.p2];
-		var playerInfo = InGame.instance.playerInfo[Who.p1];
-		var grid = InGame.instance.grid;
-
-		CommandSet pattern = new CommandSet();
-
-		Direction dir = grid.GetSimilarDirection(bossInfo.Pos(), playerInfo.Pos(), DirectionType.cross);
-
-		Command Incineration1 = new IncinerationCommand(dir);
-		Command Incineration2 = new IncinerationCommand(Grid.DirOper(dir, -2));
-
-		pattern.Push(Incineration1);
-		pattern.Push(Incineration2);
+		pattern.Push(new DarkRedemption());
+		pattern.Push(new VanishCommand());
+		pattern.Push(new MoveCommand(dir2));
+		pattern.Push(new MoveCommand(dir2));
 
 		return pattern;
 	}
 }
-
-#endregion

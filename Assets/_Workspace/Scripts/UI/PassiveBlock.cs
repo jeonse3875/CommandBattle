@@ -41,6 +41,12 @@ public class PassiveBlock : MonoBehaviour
                 description = "'저주' 커맨드가 적중할 때마다 마력을 흡수합니다.(최대 5번) " +
                     "마력을 소모해 강력한 '마법' 커맨드를 사용할 수 있습니다.";
                 break;
+            case ClassType.pirate:
+                maxHP = "200";
+                passiveName = "약탈";
+                description = "적을 공격할 때마다 금화를 하나 약탈합니다. 금화가 3개 모이면 " +
+                    "함선에 지원을 요청하여 다음 전투 시작 시 전장 중앙을 집중포화합니다.";
+                break;
             default:
                 break;
         }

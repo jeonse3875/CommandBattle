@@ -25,6 +25,10 @@ public class ResourcePanel : MonoBehaviour
 	public GameObject witchPanel;
 	public List<Image> magicList;
 
+	// pirate
+	public GameObject piratePanel;
+	public List<Image> coinList;
+
 	private void Update()
 	{
 		if (isActive)
@@ -59,6 +63,11 @@ public class ResourcePanel : MonoBehaviour
 				ColorUtility.TryParseHtmlString("#9438A3", out color);
 				image_Background.color = color;
 				witchPanel.SetActive(true);
+				break;
+			case ClassType.pirate:
+				ColorUtility.TryParseHtmlString("#66B2E5", out color);
+				image_Background.color = color;
+				piratePanel.SetActive(true);
 				break;
 			default:
 				image_Background.gameObject.SetActive(false);
@@ -108,6 +117,19 @@ public class ResourcePanel : MonoBehaviour
 				{
 					for (int i = 0; i < magicList.Count - resource; i++)
 						magicList[magicList.Count - 1 - i].DOFade(0.3f, 0.5f);
+				}
+				lastResource = resource;
+				break;
+			case ClassType.pirate:
+				if (resource > lastResource)
+				{
+					for (int i = 0; i < resource; i++)
+						coinList[i].DOFade(1f, 0.5f);
+				}
+				else if (resource < lastResource)
+				{
+					for (int i = 0; i < coinList.Count - resource; i++)
+						coinList[coinList.Count - 1 - i].DOFade(0.3f, 0.5f);
 				}
 				lastResource = resource;
 				break;

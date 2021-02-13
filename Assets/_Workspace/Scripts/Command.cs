@@ -125,7 +125,7 @@ public class CommandSet
 
 public enum ClassType
 {
-	common, knight, werewolf, hunter, witch,
+	common, knight, werewolf, hunter, witch, pirate
 }
 
 public enum CommandId
@@ -140,6 +140,8 @@ public enum CommandId
 	RapidShot, FlipShot, StartHunting, HunterTrap, ParalyticArrow, Sniping, HerbTherapy,
 	//마녀
 	CurseStiff, CursePoison, CursePuppet, SpellFireExplosion, SpellLightning, EscapeSpell,
+	//해적
+	
 }
 
 public class Command
@@ -160,7 +162,7 @@ public class Command
 
 	public bool isPreview;
 	public ((int x, int y) player, (int x, int y) enemy) previewPos = ((1, 2), (3, 2));
-	public Grid pre_grid;
+	public GGrid pre_grid;
 	public PlayerInfo pre_Player;
 	public PlayerInfo pre_Enemy;
 	public Transform pre_Particles;
@@ -197,7 +199,7 @@ public class Command
 		this.bossType = bossType;
 	}
 
-	public void SetPreview(Grid grid, PlayerInfo player, PlayerInfo enemy, Transform particles, (BuffSet set1, BuffSet set2) buffSet)
+	public void SetPreview(GGrid grid, PlayerInfo player, PlayerInfo enemy, Transform particles, (BuffSet set1, BuffSet set2) buffSet)
 	{
 		pre_grid = grid;
 		pre_Player = player;
@@ -237,6 +239,9 @@ public class Command
 				break;
 			case ClassType.witch:
 				className = "마녀";
+				break;
+			case ClassType.pirate:
+				className = "해적";
 				break;
 			default:
 				break;
@@ -282,7 +287,7 @@ public class Command
 		return InGame.instance.playerInfo[Enemy()];
 	}
 
-	public Grid GetGrid()
+	public GGrid GetGrid()
 	{
 		if (isPreview)
 			return pre_grid;
@@ -318,7 +323,7 @@ public class Command
 
 	public List<(int x, int y)> CalculateArea(List<(int x, int y)> area, (int x, int y) curPos, Direction dir = Direction.up)
 	{
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 		area = grid.SwitchDirList(area, dir);
 		for (int i = 0; i < area.Count; i++)
 		{
@@ -330,7 +335,7 @@ public class Command
 
 	public (int x, int y) CalculateArea((int x, int y) area, (int x, int y) curPos, Direction dir = Direction.up)
 	{
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 		area = grid.SwitchDir(area, dir);
 		area = grid.AddPos(curPos, area);
 
@@ -388,7 +393,7 @@ public class Command
 		if (isPreview)
 		{
 			LobbyUI lobby = GameObject.Find("LobbyUI").GetComponent<LobbyUI>();
-			Grid grid = GetGrid();
+			GGrid grid = GetGrid();
 			foreach (var pos in area)
 			{
 				if (grid.IsInGrid(pos))
@@ -399,7 +404,7 @@ public class Command
 		}
 		else
 		{
-			Grid grid = GetGrid();
+			GGrid grid = GetGrid();
 			foreach (var pos in area)
 			{
 				if (grid.IsInGrid(pos))
@@ -449,6 +454,15 @@ public class Command
 		else
 		{
 			InGame.instance.buffSet[who].Add(buff);
+			if (who.Equals(Enemy()) && buff.category.Equals(BuffCategory.stiff))
+			{
+				if (InGame.instance.playingCommand.ContainsKey(who) && (InGame.instance.commandRoutine[who] != null))
+				{
+					string canceledCommand = InGame.instance.playingCommand[who].name;
+					if (canceledCommand != "Empty")
+						BattleLog(string.Format("[{0}] 경직시킴", canceledCommand));
+				}
+			}
 		}
 	}
 
@@ -540,14 +554,14 @@ public class MoveCommand : Command
 	{
 		PlayerInfo player = GetCommanderInfo();
 		PlayerInfo enemy = GetEnemyInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 		Transform tr = player.tr;
 
 		(int x, int y) curPos = player.Pos();
 		(int x, int y) targetPos = grid.SwitchDir((0, 1), dir);
 		targetPos = grid.ClampPos(grid.AddPos(curPos, targetPos));
 
-		if (targetPos == curPos || targetPos == enemy.Pos())
+		if (targetPos == curPos)
 		{
 			BattleLog("가로막힘");
 			yield break;
@@ -564,7 +578,7 @@ public class MoveCommand : Command
 		}
 		else
 		{
-			BattleLog(string.Format("{0} 이동.", Grid.DirToKorean(dir)));
+			BattleLog(string.Format("{0} 이동.", GGrid.DirToKorean(dir)));
 		}
 
 		Vector3 startPosVec = tr.position;
@@ -643,7 +657,7 @@ public class EarthStrikeCommand : Command
 	{
 
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		List<(int x, int y)> attackArea = new List<(int x, int y)> { (0, 1), (0, 2) };
 		attackArea = CalculateArea(attackArea, player.Pos(), dir);
@@ -686,7 +700,7 @@ public class WhirlStrikeCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		List<(int x, int y)> attackArea = new List<(int x, int y)> { (0, 1), (0, -1), (1, 1), (1, 0), (1, -1), (-1, 1), (-1, 0), (-1, -1) };
 		attackArea = CalculateArea(attackArea, player.Pos());
@@ -755,7 +769,7 @@ public class EarthWaveCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		List<(int x, int y)> attackArea1 = new List<(int x, int y)> { (-1, 1), (1, 1), (-1, -1), (1, -1) };
 		List<(int x, int y)> attackArea2 = new List<(int x, int y)> { (-2, 2), (2, 2), (-2, -2), (2, -2) };
@@ -813,7 +827,7 @@ public class ChargeCommand : Command
 	{
 		PlayerInfo player = GetCommanderInfo();
 		PlayerInfo enemy = GetEnemyInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		SetAnimState(AnimState.charge);
 
@@ -915,7 +929,7 @@ public class CuttingCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 		var effect = GetEffect();
 		Transform enemyTr = GetEnemyInfo().tr;
 
@@ -992,7 +1006,7 @@ public class LeapAttackCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		if (player.transformCount.Equals(0))
 		{
@@ -1064,7 +1078,7 @@ public class InnerWildnessCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		if (player.transformCount.Equals(0))
 		{
@@ -1120,7 +1134,7 @@ public class HeartRipCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		List<(int x, int y)> attackArea = new List<(int x, int y)>() { (0, 1), (0, 2) };
 		attackArea = CalculateArea(attackArea, player.Pos(), dir);
@@ -1170,6 +1184,9 @@ public class VanishCommand : Command
 
 	public override IEnumerator Execute()
 	{
+		if (GetCommanderInfo().isVanish)
+			yield break;
+
 		PlayerInfo player = GetCommanderInfo();
 
 		var effect = GetEffect();
@@ -1224,7 +1241,7 @@ public class SweepCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 		var effect = GetEffect();
 		Transform enemyTr = GetEnemyInfo().tr;
 
@@ -1291,7 +1308,7 @@ public class RapidShotCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		List<(int x, int y)> attackArea = new List<(int x, int y)> { (0, 1), (0, 2), (0, 3) };
 		attackArea = CalculateArea(attackArea, player.Pos(), dir);
@@ -1352,7 +1369,7 @@ public class FlipShotCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		List<(int x, int y)> attackArea = new List<(int x, int y)> { (0, 2), (-1, 2), (1, 2) };
 		attackArea = CalculateArea(attackArea, player.Pos(), dir);
@@ -1391,7 +1408,7 @@ public class StartHuntingCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		Buff deBuff = new Buff(BuffCategory.takeDamage, false, +1f);
 		deBuff.SetCount(CountType.takeDamage);
@@ -1419,7 +1436,7 @@ public class HunterTrapCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		(int x, int y) pos = (0, 1);
 		pos = grid.SwitchDir(pos, dir);
@@ -1458,7 +1475,7 @@ public class ParalyticArrowCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		List<(int x, int y)> attackArea = new List<(int x, int y)> { (0, 2) };
 		attackArea = CalculateArea(attackArea, player.Pos(), dir);
@@ -1511,7 +1528,7 @@ public class SnipingCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		if (isPreview)
 			this.dir = Direction.rightUp;
@@ -1627,7 +1644,6 @@ public class CurseStiffCommand : Command
 		ApplyBuff(Enemy(), stiff);
 		player.Resource++;
 
-		BattleLog("경직시킴");
 		yield return new WaitForSeconds(0.75f);
 		SetAnimState(AnimState.idle);
 	}
@@ -1780,7 +1796,7 @@ public class SpellLightningCommand : Command
 	public override IEnumerator Execute()
 	{
 		PlayerInfo player = GetCommanderInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		player.Resource -= costResource;
 
@@ -1833,7 +1849,7 @@ public class EscapeSpellCommand : Command
 	{
 		PlayerInfo player = GetCommanderInfo();
 		PlayerInfo enemy = GetEnemyInfo();
-		Grid grid = GetGrid();
+		GGrid grid = GetGrid();
 
 		List<(int x, int y)> checkArea = new List<(int x, int y)>()
 		{ (0,1),(1,1),(1,0),(1,-1),(0,-1),(-1,-1),(-1,0),(-1,1) };
@@ -1844,7 +1860,7 @@ public class EscapeSpellCommand : Command
 		if (CheckEnemyInArea(checkArea))
 		{
 			var dirPos = grid.SubtractPos(player.Pos(), enemy.Pos());
-			Direction teleDir = Grid.PosToDir(dirPos);
+			Direction teleDir = GGrid.PosToDir(dirPos);
 
 			var telePos = (0, 2);
 			telePos = grid.SwitchDir(telePos, teleDir);

@@ -42,7 +42,7 @@ public class InGame : MonoBehaviour
 	private bool isLeaveEnd = false;
 
 	public Dictionary<Who, PlayerInfo> playerInfo = new Dictionary<Who, PlayerInfo>();
-	public Grid grid;
+	public GGrid grid;
 
 	public Dictionary<Who, Transform> particles = new Dictionary<Who, Transform>();
 	public Dictionary<CommandId, ParticleSystem> effects = new Dictionary<CommandId, ParticleSystem>();
@@ -231,7 +231,7 @@ public class InGame : MonoBehaviour
 		record.play++;
 		UserInfo.instance.matchRecord[playingCType[me]] = record;
 
-		grid = new Grid(5, 5, 5f, new Vector3(-10, 0, -10));
+		grid = new GGrid(5, 5, 5f, new Vector3(-10, 0, -10));
 		playerNickname = BackendManager.instance.GetMyNickname();
 		opponentNickname = BackendManager.instance.GetOpponentNickname();
 		GameObject obj_P1 = Instantiate(Resources.Load<GameObject>("Character/" + playingCType[Who.p1].ToString() + "_Blue"));
@@ -322,7 +322,7 @@ public class InGame : MonoBehaviour
 				}
 
 				if (playerInfo[Who.p1].isPuppet)
-					commandList[Who.p1][currentTime].dir = Grid.OppositeDir(commandList[Who.p1][currentTime].dir);
+					commandList[Who.p1][currentTime].dir = GGrid.OppositeDir(commandList[Who.p1][currentTime].dir);
 				commandRoutine[Who.p1] = StartCoroutine(commandList[Who.p1][currentTime].Execute());
 				playingCommand[Who.p1] = commandList[Who.p1][currentTime];
 			}
@@ -330,8 +330,8 @@ public class InGame : MonoBehaviour
 			if (UserInfo.instance.playingGameMode.Equals(GameMode.OneOnOne)
 				&& commandList[Who.p2][currentTime].id.Equals(CommandId.Empty))
 				StartCoroutine(commandList[Who.p2][currentTime].Execute());
-			else if (UserInfo.instance.playingGameMode.Equals(GameMode.bossRush)
-				&& commandList[Who.p2][currentTime].bossId.Equals(BossCommandId.Empty))
+			else if (commandList[Who.p2][currentTime].bossId.Equals(BossCommandId.Empty)
+				&& commandList[Who.p2][currentTime].id.Equals(CommandId.Empty))
 				StartCoroutine(commandList[Who.p2][currentTime].Execute());
 			else
 			{
@@ -342,7 +342,7 @@ public class InGame : MonoBehaviour
 				}
 
 				if (playerInfo[Who.p2].isPuppet)
-					commandList[Who.p2][currentTime].dir = Grid.OppositeDir(commandList[Who.p2][currentTime].dir);
+					commandList[Who.p2][currentTime].dir = GGrid.OppositeDir(commandList[Who.p2][currentTime].dir);
 				commandRoutine[Who.p2] = StartCoroutine(commandList[Who.p2][currentTime].Execute());
 				playingCommand[Who.p2] = commandList[Who.p2][currentTime];
 			}
@@ -723,7 +723,7 @@ public class InGame : MonoBehaviour
 		playingCType[Who.p1] = UserInfo.instance.playingClass;
 		curBoss = ChooseRandomBoss();
 
-		grid = new Grid(5, 5, 5f, new Vector3(-10, 0, -10));
+		grid = new GGrid(5, 5, 5f, new Vector3(-10, 0, -10));
 		playerNickname = BackendManager.instance.nickname;
 		opponentNickname = Command.GetKoreanBossName(curBoss);
 		GameObject obj_P1 = Instantiate(Resources.Load<GameObject>("Character/" + UserInfo.instance.playingClass.ToString() + "_Blue"));

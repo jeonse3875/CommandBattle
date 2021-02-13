@@ -84,7 +84,7 @@ public class LobbyUI : MonoBehaviour
 	public CommandInfoBlock buyWaitingCommandInfoBlock;
 
 	public GameObject pre_AttackRange;
-	public Grid pre_Grid;
+	public GGrid pre_Grid;
 	public PlayerInfo pre_Player;
 	public PlayerInfo pre_Enemy;
 	public Transform pre_Particles;
@@ -167,7 +167,7 @@ public class LobbyUI : MonoBehaviour
 
 	private void SetPreview()
 	{
-		pre_Grid = new Grid(5, 5, 5f, new Vector3(-10, 0, -10));
+		pre_Grid = new GGrid(5, 5, 5f, new Vector3(-10, 0, -10));
 		pre_Particles = GameObject.Find("Particles_p1").transform;
 	}
 

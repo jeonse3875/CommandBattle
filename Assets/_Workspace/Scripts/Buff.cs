@@ -287,7 +287,10 @@ public class Buff
 		}
 
 		if (player.isVanish && !category.Equals(BuffCategory.vanish))
-			effectObj.SetActive(false);
+		{
+			if (effectObj != null)
+				effectObj.SetActive(false);
+		}
 
 		if (isPassive)
 			InGame.DestroyObj(effectObj);

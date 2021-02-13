@@ -60,7 +60,7 @@ public class PlayerInfo
 		else
 			enemy = Who.p1;
 
-		Grid grid = new Grid(5, 5, 5f, new Vector3(-10, 0, -10));
+		GGrid grid = new GGrid(5, 5, 5f, new Vector3(-10, 0, -10));
 		tr.position = grid.PosToVec3(Pos());
 		animator = tr.GetComponent<Animator>();
 

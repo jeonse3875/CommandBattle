@@ -59,7 +59,7 @@ public class GiantGolem : ClassSpecialize
 		Command move = new BossMoveSlowCommand(dir1);
 		Command spin1 = new SpinSwingCommand(dir1);
 		Command spin2 = new SpinSwingCommand(dir2);
-		Command swing = new GiantSwingCommand(Grid.OppositeDir(dir2));
+		Command swing = new GiantSwingCommand(GGrid.OppositeDir(dir2));
 
 		pattern.Push(move);
 		pattern.Push(spin1);
@@ -83,7 +83,7 @@ public class GiantGolem : ClassSpecialize
 		Command jump = new JumpAttackCommand();
 		Command spin1 = new SpinSwingCommand(dir1);
 		Command swing1 = new GiantSwingCommand(dir2);
-		Command swing2 = new GiantSwingCommand(Grid.DirOper(dir2, +1));
+		Command swing2 = new GiantSwingCommand(GGrid.DirOper(dir2, +1));
 
 		pattern.Push(jump);
 		pattern.Push(spin1);
@@ -103,8 +103,8 @@ public class GiantGolem : ClassSpecialize
 		Direction dir = grid.GetSimilarDirection(bossInfo.Pos(), playerInfo.Pos(), DirectionType.all);
 
 		Command swing1 = new GiantSwingCommand(dir);
-		Command swing2 = new GiantSwingCommand(Grid.DirOper(dir, -1));
-		Command swing3 = new GiantSwingCommand(Grid.DirOper(dir, +1));
+		Command swing2 = new GiantSwingCommand(GGrid.DirOper(dir, -1));
+		Command swing3 = new GiantSwingCommand(GGrid.DirOper(dir, +1));
 
 		pattern.Push(swing1);
 		pattern.Push(swing2);
@@ -140,7 +140,7 @@ public class GiantGolem : ClassSpecialize
 
 		Command jumpAttack = new JumpAttackCommand();
 		Command Incineration = new IncinerationCommand(dir);
-		Command swing = new GiantSwingCommand(Grid.OppositeDir(dir));
+		Command swing = new GiantSwingCommand(GGrid.OppositeDir(dir));
 
 		pattern.Push(jumpAttack);
 		pattern.Push(Incineration);
@@ -182,7 +182,7 @@ public class GiantGolem : ClassSpecialize
 		Direction dir = grid.GetSimilarDirection(bossInfo.Pos(), playerInfo.Pos(), DirectionType.cross);
 
 		Command Incineration1 = new IncinerationCommand(dir);
-		Command Incineration2 = new IncinerationCommand(Grid.DirOper(dir, -2));
+		Command Incineration2 = new IncinerationCommand(GGrid.DirOper(dir, -2));
 
 		pattern.Push(Incineration1);
 		pattern.Push(Incineration2);
