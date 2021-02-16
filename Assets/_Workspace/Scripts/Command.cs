@@ -141,7 +141,7 @@ public enum CommandId
 	//마녀
 	CurseStiff, CursePoison, CursePuppet, SpellFireExplosion, SpellLightning, EscapeSpell,
 	//해적
-	
+	CloseFight, HireDeckhand, HireMedical, HireTombraider, SailOut
 }
 
 public class Command
@@ -1517,7 +1517,7 @@ public class ParalyticArrowCommand : Command
 public class SnipingCommand : Command
 {
 	public SnipingCommand(Direction dir = Direction.rightUp)
-		: base(CommandId.Sniping, "저격", 3, 1, 25, DirectionType.diagonal, ClassType.hunter)
+		: base(CommandId.Sniping, "저격", 3, 1, 30, DirectionType.diagonal, ClassType.hunter)
 	{
 		this.dir = dir;
 		description = "정신을 집중하여 먼 거리까지 날아가는 화살을 발사합니다. " +
@@ -1882,6 +1882,225 @@ public class EscapeSpellCommand : Command
 		}
 
 		yield return new WaitForSeconds(0.88f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
+#endregion
+
+#region 해적 커맨드
+
+public class CloseFightCommand : Command
+{
+	public CloseFightCommand(Direction dir = Direction.right)
+		: base(CommandId.CloseFight, "백병전", 3, 2, 40, DirectionType.cross, ClassType.pirate)
+	{
+		this.dir = dir;
+		description = "연속된 근접 공격을 합니다.";
+		previewPos = ((2, 2), (3, 2));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		GGrid grid = GetGrid();
+		PlayerInfo enemy = GetEnemyInfo();
+
+		List<(int x, int y)> attackArea1 = new List<(int x, int y)> { (0, 1) };
+		List<(int x, int y)> attackArea2 = new List<(int x, int y)> { (0, 1), (1, 1), (-1, 1) };
+		List<(int x, int y)> attackArea3 = new List<(int x, int y)> { (0, 1), (0, 2) };
+		attackArea1 = CalculateArea(attackArea1, player.Pos(), dir);
+		attackArea2 = CalculateArea(attackArea2, player.Pos(), dir);
+		attackArea3 = CalculateArea(attackArea3, player.Pos(), dir);
+		player.tr.LookAt(grid.PosToVec3(attackArea1[0]));
+		var effect = GetEffect();
+
+		// 수치조정
+		int damage1 = this.totalDamage + 10;
+		int damage2 = this.totalDamage - 10;
+		int damage3 = this.totalDamage;
+		SetAnimState(AnimState.closeFight);
+
+		DisplayAttackRange(attackArea1, 0.3f);
+		yield return new WaitForSeconds(0.3f);
+		if (CheckEnemyInArea(attackArea1))
+		{
+			Hit(damage1);
+			effect.transform.position = enemy.tr.position;
+			effect.Play();
+		}
+		yield return new WaitForSeconds(0.47f);
+
+		DisplayAttackRange(attackArea2, 0.53f);
+		yield return new WaitForSeconds(0.53f);
+		if (CheckEnemyInArea(attackArea2))
+		{
+			Hit(damage2);
+			effect.transform.position = enemy.tr.position;
+			effect.Play();
+		}
+		yield return new WaitForSeconds(0.5f);
+
+		DisplayAttackRange(attackArea3, 0.5f);
+		yield return new WaitForSeconds(0.5f);
+		if (CheckEnemyInArea(attackArea3))
+		{
+			Hit(damage3);
+			effect.transform.position = enemy.tr.position;
+			effect.Play();
+		}
+		yield return new WaitForSeconds(0.5f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
+public class HireDeckhandCommand : Command
+{
+	public HireDeckhandCommand(Direction dir = Direction.right)
+		: base(CommandId.HireDeckhand, "고용 - 갑판원", 2, 1, 0, DirectionType.none, ClassType.pirate)
+	{
+		this.dir = dir;
+		description = "금화 1 필요. 갑판원을 고용합니다. " +
+			"배틀이 끝날 때 고용한 갑판원 하나당 10의 피해를 적에게 입힙니다. 최대 셋까지 고용 가능.";
+		previewPos = ((1, 2), (3, 2));
+		costResource = 1;
+	}
+
+	public override bool CanUse()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Pirate pirate = (Pirate)player.specialize;
+
+		return (pirate.crew_deckhand < 3) && (player.Resource > 0);
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		player.Resource -= costResource;
+		Pirate pirate = (Pirate)player.specialize;
+
+		SetAnimState(AnimState.hire);
+		yield return new WaitForSeconds(0.47f);
+
+		if (!isPreview)
+			pirate.HireDeckHand(commander);
+
+		yield return new WaitForSeconds(0.66f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
+public class HireMedicalCommand : Command
+{
+	public HireMedicalCommand(Direction dir = Direction.right)
+		: base(CommandId.HireMedical, "고용 - 의료단원", 2, 1, 0, DirectionType.none, ClassType.pirate)
+	{
+		this.dir = dir;
+		description = "금화 1 필요. 의료단원을 고용합니다. " +
+			"배틀이 끝날 때 고용한 의료단원 하나당 10의 체력을 회복합니다. 최대 셋까지 고용 가능.";
+		previewPos = ((1, 2), (3, 2));
+		costResource = 1;
+	}
+
+	public override bool CanUse()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Pirate pirate = (Pirate)player.specialize;
+
+		return (pirate.crew_medical < 3) && (player.Resource > 0);
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		player.Resource -= costResource;
+		Pirate pirate = (Pirate)player.specialize;
+
+		SetAnimState(AnimState.hire);
+		yield return new WaitForSeconds(0.47f);
+
+		if (!isPreview)
+			pirate.HireMedical(commander);
+
+		yield return new WaitForSeconds(0.66f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
+public class HireTombraiderCommand : Command
+{
+	public HireTombraiderCommand(Direction dir = Direction.right)
+		: base(CommandId.HireTombraider, "고용 - 도굴꾼", 2, 1, 0, DirectionType.none, ClassType.pirate)
+	{
+		this.dir = dir;
+		description = "금화 1 필요. 도굴꾼을 고용합니다. " +
+			"배틀이 끝날 때 고용한 도굴꾼 하나당 1의 금화를 얻습니다. 최대 셋까지 고용 가능.";
+		previewPos = ((1, 2), (3, 2));
+		costResource = 1;
+	}
+
+	public override bool CanUse()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Pirate pirate = (Pirate)player.specialize;
+
+		return (pirate.crew_tombraider < 3) && (player.Resource > 0);
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		player.Resource -= costResource;
+		Pirate pirate = (Pirate)player.specialize;
+
+		SetAnimState(AnimState.hire);
+		yield return new WaitForSeconds(0.47f);
+
+		if (!isPreview)
+			pirate.HireTombraider(commander);
+
+		yield return new WaitForSeconds(0.66f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
+public class SailOutCommand : Command
+{
+	public SailOutCommand(Direction dir = Direction.right)
+		: base(CommandId.SailOut, "출항이다!", 1, 1, 0, DirectionType.none, ClassType.pirate)
+	{
+		this.dir = dir;
+		description = "이번 전투 동안 주는 피해량이 고용한 선원 하나당 10% 증가합니다.";
+		previewPos = ((1, 2), (3, 2));
+	}
+
+	public override bool CanUse()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Pirate pirate = (Pirate)player.specialize;
+
+		return pirate.crewCount > 0;
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		Pirate pirate = (Pirate)player.specialize;
+		var effect = GetEffect();
+		effect.transform.position = player.tr.position;
+
+		float buffAmount = 0.1f * pirate.crewCount;
+		if (isPreview)
+			buffAmount = 0.1f;
+		Buff dealDamageIncrease = new Buff(BuffCategory.dealDamage, true, buffAmount);
+		dealDamageIncrease.SetDuration(10f);
+
+		SetAnimState(AnimState.sailOut);
+		effect.Play();
+		yield return new WaitForSeconds(0.36f);
+		ApplyBuff(player.me, dealDamageIncrease);
+		yield return new WaitForSeconds(0.47f);
 		SetAnimState(AnimState.idle);
 	}
 }

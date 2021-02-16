@@ -44,8 +44,8 @@ public class PassiveBlock : MonoBehaviour
             case ClassType.pirate:
                 maxHP = "200";
                 passiveName = "약탈";
-                description = "적을 공격할 때마다 금화를 하나 약탈합니다. 금화가 3개 모이면 " +
-                    "함선에 지원을 요청하여 다음 전투 시작 시 전장 중앙을 집중포화합니다.";
+                description = "적을 공격할 때마다 금화를 하나 약탈합니다. 금화로 선원을 고용하거나 " +
+                    "함선에 지원을 요청하여 특수한 커맨드를 사용할 수 있습니다.";
                 break;
             default:
                 break;

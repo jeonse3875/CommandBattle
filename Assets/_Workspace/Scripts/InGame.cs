@@ -76,6 +76,15 @@ public class InGame : MonoBehaviour
 
 	public int totalDamage = 0;
 
+	public List<Animator> crewAnimatorList;
+	public List<GameObject> deckhandList_Blue;
+	public List<GameObject> medicalList_Blue;
+	public List<GameObject> tombraiderList_Blue;
+	public List<GameObject> deckhandList_Red;
+	public List<GameObject> medicalList_Red;
+	public List<GameObject> tombraiderList_Red;
+
+
 	#region LifeCycle
 
 	private void Start()
@@ -368,7 +377,66 @@ public class InGame : MonoBehaviour
 
 		yield return new WaitForSeconds(0.5f);
 
-		if(playerInfo[Who.p1].poisonCount>0)
+		#region 해적 선원효과
+
+		bool isPirate1 = false;
+		bool isPirate2 = false;
+
+		if (playingCType.ContainsKey(Who.p1))
+		{
+			isPirate1 = playingCType[Who.p1].Equals(ClassType.pirate);
+			if (isPirate1)
+			{
+				isPirate1 = ((Pirate)playerInfo[Who.p1].specialize).crewCount > 0;
+			}
+		}
+
+		if (playingCType.ContainsKey(Who.p2))
+		{
+			isPirate2 = playingCType[Who.p2].Equals(ClassType.pirate);
+			if (isPirate2)
+			{
+				isPirate2 = ((Pirate)playerInfo[Who.p2].specialize).crewCount > 0;
+			}
+		}
+
+		if (isPirate1)
+		{
+			yield return new WaitForSeconds(cam.ZoomInTarget(new Vector3(-7.5f, 0, 13.5f)));
+			for (int i = 0; i < 9; i++)
+			{
+				if (crewAnimatorList[i].isActiveAndEnabled)
+					crewAnimatorList[i].SetTrigger("action");
+			}
+			yield return new WaitForSeconds(2f);
+			yield return new WaitForSeconds(cam.ZoomOut() + 0.5f);
+		}
+
+		if (isPirate2)
+		{
+			yield return new WaitForSeconds(cam.ZoomInTarget(new Vector3(7.5f, 0, 13.5f)));
+			for (int i = 9; i < 18; i++)
+			{
+				if (crewAnimatorList[i].isActiveAndEnabled)
+					crewAnimatorList[i].SetTrigger("action");
+			}
+			yield return new WaitForSeconds(2f);
+			yield return new WaitForSeconds(cam.ZoomOut() + 0.5f);
+		}
+
+		if (isPirate1 || isPirate2)
+		{
+			StartCoroutine(ApplyCrewAbility(Who.p1));
+			StartCoroutine(ApplyCrewAbility(Who.p2));
+
+			yield return new WaitForSeconds(2f);
+		}
+
+		#endregion
+
+		#region 독데미지
+
+		if (playerInfo[Who.p1].poisonCount>0)
 		{
 			int poisonDamage = 10 * playerInfo[Who.p1].poisonCount;
 			playerInfo[Who.p1].TakeDamage(poisonDamage, poisonDamage);
@@ -378,6 +446,10 @@ public class InGame : MonoBehaviour
 			int poisonDamage = 10 * playerInfo[Who.p2].poisonCount;
 			playerInfo[Who.p2].TakeDamage(poisonDamage, poisonDamage);
 		}
+
+		#endregion
+
+		#region 늑대인간 변신
 
 		if (UserInfo.instance.playingGameMode.Equals(GameMode.OneOnOne))
 		{
@@ -391,6 +463,8 @@ public class InGame : MonoBehaviour
 			yield return StartCoroutine(WerewolfTransform(Who.p1));
 			isBattleEnd[Who.p1] = true;
 		}
+
+		#endregion
 
 		yield return new WaitForSeconds(2f);
 	}
@@ -667,6 +741,45 @@ public class InGame : MonoBehaviour
 		yield return null;
 		StopCommand(who, true);
 		playerInfo[who].animator.SetInteger("state", (int)AnimState.death);
+	}
+
+	private IEnumerator ApplyCrewAbility(Who who)
+	{
+		PlayerInfo player = playerInfo[who];
+		Pirate pirate;
+		if (!playingCType.ContainsKey(who))
+			yield break;
+		if (playingCType[who].Equals(ClassType.pirate))
+		{
+			pirate = (Pirate)player.specialize;
+			if (pirate.crewCount > 0)
+			{
+				var wait = new WaitForSeconds(0.5f);
+
+				if (pirate.crew_deckhand > 0)
+				{
+					int deckHandDamage = 10 * pirate.crew_deckhand;
+					playerInfo[player.enemy].TakeDamage(deckHandDamage, deckHandDamage);
+					yield return wait;
+				}
+				
+				if (pirate.crew_medical > 0)
+				{
+					int medicalHeal = 10 * pirate.crew_medical;
+					player.Restore(medicalHeal);
+					yield return wait;
+				}
+
+				if (pirate.crew_tombraider > 0)
+				{
+					player.Resource += pirate.crew_tombraider;
+					yield return wait;
+				}
+				
+			}
+		}
+
+		yield break;
 	}
 
 	#endregion
@@ -978,6 +1091,42 @@ public class InGame : MonoBehaviour
 	public static void DestroyObj(GameObject obj)
 	{
 		Destroy(obj);
+	}
+
+	public void SummonDeckhand(Who who, int index)
+	{
+		if (who.Equals(Who.p1))
+		{
+			deckhandList_Blue[index].SetActive(true);
+		}
+		else
+		{
+			deckhandList_Red[index].SetActive(true);
+		}
+	}
+
+	public void SummonMedical(Who who, int index)
+	{
+		if (who.Equals(Who.p1))
+		{
+			medicalList_Blue[index].SetActive(true);
+		}
+		else
+		{
+			medicalList_Red[index].SetActive(true);
+		}
+	}
+
+	public void SummonTombraider(Who who, int index)
+	{
+		if (who.Equals(Who.p1))
+		{
+			tombraiderList_Blue[index].SetActive(true);
+		}
+		else
+		{
+			tombraiderList_Red[index].SetActive(true);
+		}
 	}
 
 	#endregion

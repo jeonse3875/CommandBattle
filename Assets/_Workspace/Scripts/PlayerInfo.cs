@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 public class PlayerInfo
 {
@@ -219,5 +220,5 @@ public enum AnimState
 	paralysis = 22, vanish = 23, curseStiff = 24, cursePoison = 25, spellFireExplosion = 26,
 	spellLightning = 27, escapeSpell = 28, sniping = 29, sweep = 30, thornShield = 31,
 	giantSwing = 32, bossRun = 33, incineration = 34, jumpAttack = 35, spinSwing = 36,
-	harvest = 37, darkRedemption = 38,
+	harvest = 37, darkRedemption = 38, closeFight = 39, hire = 40, sailOut = 41,
 }
