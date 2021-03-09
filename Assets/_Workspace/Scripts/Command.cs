@@ -139,9 +139,9 @@ public enum CommandId
 	//사냥꾼
 	RapidShot, FlipShot, StartHunting, HunterTrap, ParalyticArrow, Sniping, HerbTherapy,
 	//마녀
-	CurseStiff, CursePoison, CursePuppet, SpellFireExplosion, SpellLightning, EscapeSpell,
+	CurseStiff, CursePoison, CursePuppet, SpellFireExplosion, SpellLightning, EscapeSpell, VineJail,
 	//해적
-	CloseFight, HireDeckhand, HireMedical, HireTombraider, SailOut
+	CloseFight, HireDeckhand, HireMedical, HireTombraider, SailOut, OneShot
 }
 
 public class Command
@@ -1886,6 +1886,58 @@ public class EscapeSpellCommand : Command
 	}
 }
 
+public class VineJailCommand : Command
+{
+	public VineJailCommand(Direction dir = Direction.right)
+		: base(CommandId.VineJail, "덩굴 감옥", 2, 1, 20, DirectionType.cross, ClassType.witch)
+	{
+		this.dir = dir;
+		description = "덩굴을 발사해 피해를 입힙니다. 덩굴의 끝에 걸린 적은 피해를 입는 대신 " +
+		              "마비 상태가 되어 이번 전투 동안 '이동' 커맨드를 사용할 수 없습니다. (이동 능력이 있는 다른 커맨드는 사용 가능)"; 
+		previewPos = ((1, 2), (3, 2));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		GGrid grid = GetGrid();
+
+		List<(int x, int y)> attackArea1 = new List<(int x, int y)> { (0, 1) };
+		List<(int x, int y)> attackArea2 = new List<(int x, int y)> { (0, 2) };
+		attackArea1 = CalculateArea(attackArea1, player.Pos(), dir);
+		attackArea2 = CalculateArea(attackArea2, player.Pos(), dir);
+
+		player.tr.LookAt(grid.PosToVec3(attackArea1[0]));
+
+		ParticleSystem effect = GetEffect();
+		effect.transform.position = grid.PosToVec3(player.Pos());
+		effect.transform.LookAt(grid.PosToVec3(attackArea1[0]));
+		
+		Buff paralysis = new Buff(BuffCategory.paralysis, false);
+		paralysis.SetDuration(10f);
+
+		// 수치 조정
+		int damage = this.totalDamage;
+
+		SetAnimState(AnimState.vineJail);
+		DisplayAttackRange(attackArea1, 0.23f);
+		DisplayAttackRange(attackArea2, 0.23f);
+		yield return new WaitForSeconds(0.23f);
+		effect.Play();
+		yield return new WaitForSeconds(0.25f);
+		if (CheckEnemyInArea(attackArea1))
+		{
+			Hit(damage);
+		}
+		if (CheckEnemyInArea(attackArea2))
+		{
+			ApplyBuff(player.enemy,paralysis);
+		}
+		yield return new WaitForSeconds(0.32f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
 #endregion
 
 #region 해적 커맨드
@@ -2101,6 +2153,41 @@ public class SailOutCommand : Command
 		yield return new WaitForSeconds(0.36f);
 		ApplyBuff(player.me, dealDamageIncrease);
 		yield return new WaitForSeconds(0.47f);
+		SetAnimState(AnimState.idle);
+	}
+}
+
+public class OneShotCommand : Command
+{
+	public OneShotCommand(Direction dir = Direction.right)
+		: base(CommandId.OneShot, "원 샷", 1, 1, 35, DirectionType.all, ClassType.pirate)
+	{
+		this.dir = dir;
+		description = "먼 거리의 적을 피스톨로 빠르게 공격합니다. 모든 방향으로 사용이 가능합니다.";
+		previewPos = ((0, 2), (3, 2));
+	}
+
+	public override IEnumerator Execute()
+	{
+		PlayerInfo player = GetCommanderInfo();
+		GGrid grid = GetGrid();
+		List<(int x, int y)> attackArea = new List<(int x, int y)> { (0, 1), (0, 2), (0, 3) };
+		attackArea = CalculateArea(attackArea, player.Pos(), dir);
+		player.tr.LookAt(grid.PosToVec3(attackArea[0]));
+
+		var effect = GetEffect();
+		effect.transform.position = player.tr.position;
+		effect.transform.LookAt(grid.PosToVec3(attackArea[0]));
+
+		SetAnimState(AnimState.oneShot);
+		DisplayAttackRange(attackArea, 0.2f);
+		yield return new WaitForSeconds(0.2f);
+		effect.Play();
+		if (CheckEnemyInArea(attackArea))
+		{
+			Hit(totalDamage);
+		}
+		yield return new WaitForSeconds(0.41f);
 		SetAnimState(AnimState.idle);
 	}
 }
